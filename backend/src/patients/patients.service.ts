@@ -1,6 +1,6 @@
 // backend/src/patients/patients.service.ts
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Patient } from './entities/patient.entity';
@@ -16,11 +16,17 @@ export class PatientsService {
 
   create(createPatientDto: CreatePatientDto): Promise<Patient> {
     const patient = this.patientsRepository.create(createPatientDto);
-    // Extract the full name for the top-level 'name' column for easier querying
+    
+    // **Safety Check**: Ensure patient_info and full_name exist before creating the name
     const info = createPatientDto.patient_info as any;
+    if (!info || !info.full_name) {
+        throw new BadRequestException('Patient data is incomplete. Missing patient_info or full_name.');
+    }
+
     patient.name = [info.full_name.first_name, info.full_name.last_name]
       .filter(Boolean)
       .join(' ');
+      
     return this.patientsRepository.save(patient);
   }
 
@@ -37,9 +43,9 @@ export class PatientsService {
   }
 
   async update(id: number, updatePatientDto: UpdatePatientDto): Promise<Patient> {
-    const patient = await this.findOne(id); // Use findOne to ensure it exists
+    const patient = await this.findOne(id);
     
-    // Update the name field if it has changed in the patient_info
+    // **Safety Check for Update**
     if (updatePatientDto.patient_info) {
       const info = updatePatientDto.patient_info as any;
       if (info.full_name) {
@@ -49,7 +55,6 @@ export class PatientsService {
       }
     }
 
-    // Merge the new data into the existing patient object
     const updatedPatient = this.patientsRepository.merge(patient, updatePatientDto);
     
     return this.patientsRepository.save(updatedPatient);

@@ -1,33 +1,35 @@
 // backend/src/app.module.ts
-
 import { Module } from '@nestjs/common';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PatientsModule } from './patients/patients.module';
+import { ConfigModule } from '@nestjs/config'; // Import ConfigModule
+import { ExtractionModule } from './extraction/extraction.module';
 
 @Module({
   imports: [
-    // Serves the frontend files (HTML, CSS, JS)
+    // This will load the .env file from the root directory
+    ConfigModule.forRoot({
+      isGlobal: true, // Make the config service available globally
+      envFilePath: join(__dirname, '..', '..', '.env'),
+    }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
     }),
-
-    // Configures the database connection
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost', // Or 'postgres' if running inside a Docker network
+      host: 'localhost',
       port: 5432,
-      username: 'myuser',
-      password: 'mypassword',
-      database: 'medical_records',
+      username: process.env.POSTGRES_USER,
+      password: process.env.POSTGRES_PASSWORD,
+      database: process.env.POSTGRES_DB,
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
-      synchronize: true, // DEV only: automatically creates DB schema. Don't use in prod.
+      synchronize: true,
     }),
-
     PatientsModule,
+    ExtractionModule,
   ],
-  // Controllers and providers will be empty for now
   controllers: [],
   providers: [],
 })
