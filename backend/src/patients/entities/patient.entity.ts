@@ -2,17 +2,23 @@
 
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity() // This marks the class as a database table
+@Entity()
 export class Patient {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // We'll store the patient's name separately for easy searching/listing.
   @Column()
-  name: string;
+  name: string; 
 
-  @Column({ name: 'date_of_birth' })
-  dateOfBirth: Date;
+  // The 'jsonb' type is perfect for storing complex, nested JSON data.
+  // It allows us to store the entire record structure in a single column.
+  @Column('jsonb')
+  patient_info: object;
 
   @Column('jsonb', { nullable: true })
-  medicalData: object;
+  guardian_info: object;
+
+  @Column('jsonb', { nullable: true })
+  medical_encounters: object;
 }

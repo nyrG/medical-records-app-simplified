@@ -1,19 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical Records</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Editable Medical Record Viewer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .card { opacity: 0; transform: translateY(20px); animation: fadeIn 0.5s forwards; }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        .edit-input { @apply w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500; }
+        .edit-textarea { @apply w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[80px]; }
+    </style>
 </head>
+<body class="bg-gray-100 text-gray-800">
 
-<body>
-    <h1>Patient Records</h1>
-    <main id="records-container">
-        <p>Loading records...</p>
-    </main>
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Editable Medical Record Viewer</h1>
+            <p class="text-gray-600 mt-2">View, create, and edit patient medical histories from the database.</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <div class="flex flex-wrap gap-4 items-center justify-between">
+                <h2 class="text-2xl font-bold text-gray-800">Patients</h2>
+                <button id="newPatientBtn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
+                    + Add New Patient
+                </button>
+            </div>
+            <div id="patientListContainer" class="mt-4">
+                </div>
+        </div>
+
+        <div id="controlsContainer" class="hidden sticky top-4 z-10 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-md mb-8 flex flex-wrap gap-4 items-center justify-between">
+            <h2 id="currentPatientName" class="text-xl font-bold text-gray-800"></h2>
+            <div id="actionButtons">
+                <button id="editBtn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Edit Data</button>
+                <button id="saveBtn" class="hidden bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">Save Changes</button>
+                <button id="deleteBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">Delete Patient</button>
+            </div>
+        </div>
+
+        <main id="recordContainer"></main>
+        
+        <div id="placeholder" class="text-center py-16 px-6 bg-white rounded-lg shadow-md">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="mt-2 text-lg font-medium text-gray-900">No Patient Selected</h3>
+            <p class="mt-1 text-sm text-gray-500">Select a patient from the list above to view their details.</p>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
-
 </html>
