@@ -30,8 +30,18 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  findAll(): Promise<Patient[]> {
-    return this.patientsRepository.find();
+  async findAll(page: number = 1, limit: number = 10): Promise<{ data: Patient[], total: number }> {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await this.patientsRepository.findAndCount({
+      skip: skip,
+      take: limit,
+      order: {
+        id: 'DESC' // Optional: order by newest first
+      }
+    });
+
+    return { data, total };
   }
 
   async findOne(id: number): Promise<Patient> {
