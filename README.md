@@ -1,85 +1,104 @@
-# Editable Medical Record Viewer
+# Boveda: AI-Powered Patient Record Digitization
 
-This project is a simple, full-stack web application for uploading, viewing, editing, and saving patient medical records. It features a plain HTML/CSS/JS frontend and a robust backend built with NestJS, connected to a PostgreSQL database running in Docker.
+<p align="center">
+<img src="./backend/public/logo.png" alt="Boveda Logo" width="120">
+</p>
 
-## Tech Stack
+Boveda is a full-stack web application designed to streamline the digitization of patient medical records. It leverages the Google Gemini API to perform multimodal data extraction from PDF documents, including OCR for handwritten text. The extracted information is then populated into a user-friendly interface where it can be reviewed, edited, and saved to a PostgreSQL database.
+
+ \#\# Key Features
+
+  * **AI-Powered Data Extraction**: Upload a patient's medical PDF, and the application's backend uses the Google Gemini 1.5 Flash model to intelligently parse and structure the data into a JSON format.
+  * **Comprehensive CRUD Functionality**: A robust and intuitive interface for Creating, Reading, Updating, and Deleting patient records.
+  * **Interactive Patient List**: View all patients in a clean, paginated table with controls for adjusting rows per page.
+  * **Detailed Patient View**: Click on any patient to see a detailed, card-based layout of their demographic, guardian, and medical encounter information.
+  * **Full Edit Capability**: An "edit mode" allows for the correction and amendment of any data extracted by the AI before it's saved.
+  * **Bulk Actions**: Select multiple patients from the list to perform bulk operations, such as deleting records.
+
+## Technology Stack
 
   * **Frontend**:
-      * HTML
-      * [Tailwind CSS](https://tailwindcss.com/) (for styling)
-      * JavaScript (for client-side logic and API calls)
+      * HTML5 & CSS3
+      * [Tailwind CSS](https://tailwindcss.com/) & [Font Awesome](https://fontawesome.com/) for modern styling.
+      * Vanilla JavaScript for all client-side logic.
   * **Backend**:
-      * [NestJS](https://nestjs.com/) (a progressive Node.js framework using TypeScript)
-      * [TypeORM](https://typeorm.io/) (for interacting with the database)
-      * PostgreSQL
+      * [NestJS](https://nestjs.com/) (TypeScript) for a scalable and maintainable server-side architecture.
+      * [TypeORM](https://typeorm.io/) for object-relational mapping with the database.
+      * **AI**: Google Gemini API (`gemini-1.5-flash`) for data extraction.
+  * **Database**:
+      * PostgreSQL, running in a Docker container for consistency across environments.
   * **Development Environment**:
-      * [Docker](https://www.docker.com/) & Docker Compose (for running the PostgreSQL database)
+      * [Docker](https://www.docker.com/) & Docker Compose
       * Node.js & npm
 
 ## Getting Started
 
-Follow these steps to set up and run the project on your local machine.
+Follow these instructions to get the project running on your local machine for development and testing.
 
 ### Prerequisites
 
-  * [Node.js](https://nodejs.org/) (v18 or higher recommended)
-  * [Docker](https://www.docker.com/products/docker-desktop/)
+  * [Node.js](https://nodejs.org/) (v18 or higher)
+  * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+  * A Google Gemini API Key.
 
 ### 1\. Clone the Repository
 
-First, clone this repository to your local machine.
+```bash
+git clone https://github.com/your-username/medical-records-app-simplified.git
+cd medical-records-app-simplified
+```
 
-### 2\. Create Environment File
+### 2\. Configure Environment Variables
 
-The application requires a `.env` file in the root directory to configure the database connection.
+1.  Create a new file named `.env` in the root directory of the project.
 
-1.  Create a new file named `.env` in the `medical-records-app-simplified/` folder.
-
-2.  Add the following content to the file:
+2.  Add the following configuration. Be sure to replace the placeholders with your actual credentials.
 
     ```env
     # PostgreSQL Database Credentials
     POSTGRES_USER=myuser
     POSTGRES_PASSWORD=mypassword
     POSTGRES_DB=medical_records
+
+    # Google Gemini API Key
+    GEMINI_API_KEY=your_google_gemini_api_key
     ```
 
 ### 3\. Install Dependencies
 
-Navigate into the backend directory and install the required npm packages.
+Navigate to the backend directory and install the necessary npm packages.
 
 ```bash
-cd medical-records-app-simplified/backend
+cd backend
 npm install
 ```
 
 ### 4\. Start the Database
 
-From the **root** directory (`medical-records-app-simplified/`), start the PostgreSQL database using Docker Compose.
+From the **root** directory of the project, start the PostgreSQL database container using Docker Compose. The `-d` flag will run it in the background.
 
 ```bash
 docker-compose up -d
 ```
 
-This will start a PostgreSQL container in the background.
-
 ### 5\. Run the Application
 
-Now, you can start the NestJS backend server. Make sure you are still in the `backend` directory.
+Finally, start the NestJS backend server. Make sure you are still in the `backend` directory.
 
 ```bash
-# To run in development mode with auto-reloading
+# Run in development mode with live reloading
 npm run start:dev
 ```
 
-The application will be available at [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000).
+The application will now be running and accessible at [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000).
 
 ## API Endpoints
 
-The backend provides the following RESTful API endpoints for managing patient data:
+The backend exposes the following RESTful API endpoints for managing patient records:
 
-  * **`GET /api/patients`**: Retrieve a list of all patients.
-  * **`GET /api/patients/:id`**: Retrieve a single patient by their ID.
-  * **`POST /api/patients`**: Create a new patient record.
-  * **`PATCH /api/patients/:id`**: Update an existing patient record.
-  * **`DELETE /api/patients/:id`**: Delete a patient record.
+  * **`POST /api/extraction/upload`**: Uploads a PDF file for AI data extraction.
+  * **`GET /api/patients`**: Retrieves a paginated list of all patients.
+  * **`GET /api/patients/:id`**: Retrieves a single patient by their unique ID.
+  * **`POST /api/patients`**: Creates a new patient record in the database.
+  * **`PATCH /api/patients/:id`**: Updates an existing patient record.
+  * **`DELETE /api/patients/:id`**: Deletes a patient record.
