@@ -14,7 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentPatientName = document.getElementById('currentPatientName');
     const newPatientBtn = document.getElementById('newPatientBtn');
     const editBtn = document.getElementById('editBtn');
-    const saveBtn = document.getElementById('saveBtn');
+    const saveIcon = document.getElementById('saveIcon');
+    const saveBtnText = document.getElementById('saveBtnText');
     const deleteBtn = document.getElementById('deleteBtn');
     const uploadModal = document.getElementById('uploadModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
@@ -98,36 +99,65 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     async function handleSaveChanges() {
-        const updatedData = {};
-        document.querySelectorAll('[data-path]').forEach(input => {
-            const path = input.dataset.path;
-            let value = input.value;
-            if (input.type === 'number' && value) {
-                value = parseFloat(value);
-            } else if (!value.trim()) {
-                value = null;
-            }
-            setValueByPath(updatedData, path, value);
-        });
-
         try {
-            const savedPatient = selectedPatient.id
-                ? await API.updatePatient(selectedPatient.id, updatedData)
-                : await API.createPatient(updatedData);
+            // --- UPDATE LOGIC ---
+            if (selectedPatient.id) {
+                const updatedData = {};
+                document.querySelectorAll('[data-path]').forEach(input => {
+                    const path = input.dataset.path;
+                    let value = input.value;
+                    if (input.type === 'number' && value) {
+                        value = parseFloat(value);
+                    } else if (value && !value.trim()) { // Handle empty strings
+                        value = null;
+                    }
+                    setValueByPath(updatedData, path, value);
+                });
 
-            await fetchAndDisplayPatients(currentPage);
-            selectPatient(savedPatient.id);
+                const savedPatient = await API.updatePatient(selectedPatient.id, updatedData);
+
+                // Update the patient in our local array
+                const index = allPatients.findIndex(p => p.id === savedPatient.id);
+                if (index !== -1) {
+                    allPatients[index] = savedPatient;
+                }
+
+                // Simply select the patient again to refresh the view correctly.
+                // DO NOT call renderPatientList() here.
+                selectPatient(savedPatient.id);
+
+                // --- CREATE LOGIC ---
+            } else {
+                const newPatientData = JSON.parse(JSON.stringify(selectedPatient));
+                document.querySelectorAll('[data-path]').forEach(input => {
+                    const path = input.dataset.path;
+                    let value = input.value;
+                    if (input.type === 'number' && value) {
+                        value = parseFloat(value);
+                    } else if (value && !value.trim()) {
+                        value = null;
+                    }
+                    setValueByPath(newPatientData, path, value);
+                });
+
+                const savedPatient = await API.createPatient(newPatientData);
+
+                // Add the new patient to our local array and refresh the list
+                allPatients.push(savedPatient);
+                renderPatientList();
+                selectPatient(savedPatient.id);
+            }
         } catch (error) {
             console.error('Failed to save patient:', error);
+
             let detailedError = 'Could not save patient data.';
-            // This check will now work if error.response exists
             if (error.response) {
                 try {
                     const responseBody = await error.response.json();
                     if (responseBody.message) {
                         detailedError = Array.isArray(responseBody.message) ? responseBody.message.join(', ') : responseBody.message;
                     }
-                } catch (e) { /* Fallback if JSON parsing fails */ }
+                } catch (e) { /* Fallback */ }
             }
             alert(`Error: ${detailedError}`);
         }
@@ -146,9 +176,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error: Could not delete patient.');
         }
     }
-    // Add collapsed functions for brevity
-    Object.assign(window, { handlePdfUpload: async function () { const file = pdfFileInput.files[0]; fileError.textContent = ''; if (!file || file.type !== 'application/pdf') { fileError.textContent = 'Please select a valid PDF file.'; return; } const formData = new FormData(); formData.append('file', file); loadingOverlay.classList.remove('hidden'); uploadModal.classList.add('hidden'); try { selectedPatient = await API.processPdf(formData); isEditMode = true; selectPatient(null); currentPatientName.textContent = 'Review & Create New Patient'; saveBtn.textContent = 'Create Patient'; } catch (error) { alert(`Error processing PDF: ${error.message}`); } finally { loadingOverlay.classList.add('hidden'); pdfFileInput.value = ''; } }, handleSaveChanges: async function () { const updatedData = {}; document.querySelectorAll('[data-path]').forEach(input => { const path = input.dataset.path; let value = input.value; if (input.type === 'number' && value) { value = parseFloat(value); } else if (!value.trim()) { value = null; } setValueByPath(updatedData, path, value); }); try { const savedPatient = selectedPatient.id ? await API.updatePatient(selectedPatient.id, updatedData) : await API.createPatient(updatedData); await fetchAndDisplayPatients(currentPage); selectPatient(savedPatient.id); } catch (error) { alert('Error: Could not save patient data.'); } }, handleDeletePatient: async function () { if (!selectedPatient?.id || !confirm(`Are you sure you want to delete patient ${selectedPatient.name}? This cannot be undone.`)) { return; } try { await API.deletePatient(selectedPatient.id); selectedPatient = null; isEditMode = false; await fetchAndDisplayPatients(1); } catch (error) { alert('Error: Could not delete patient.'); } } });
-
     // --- UI State & Rendering Functions ---
     function toggleEditMode() {
         if (!selectedPatient) return;
@@ -179,6 +206,15 @@ document.addEventListener('DOMContentLoaded', () => {
             editBtn.classList.replace('btn-primary', 'btn-secondary');
             saveBtn.classList.remove('hidden');
             deleteBtn.classList.add('hidden');
+
+            // Set the save button text and icon based on the context
+            if (selectedPatient.id) {
+                saveBtnText.textContent = 'Save Changes';
+                saveIcon.className = 'fa-solid fa-check'; // Check icon
+            } else {
+                saveBtnText.textContent = 'Create Patient';
+                saveIcon.className = 'fa-solid fa-plus'; // Plus icon
+            }
         } else {
             editBtnText.textContent = 'Edit Data';
             editIcon.classList.remove('hidden');
@@ -194,11 +230,17 @@ document.addEventListener('DOMContentLoaded', () => {
         patientDetailContainer.classList.add('hidden');
         recordCount.textContent = `${totalPatients} Records`;
         patientListContainer.innerHTML = '';
+
+        // Get the pagination container element
+        const paginationContainer = document.getElementById('paginationContainer');
+
         if (allPatients.length === 0) {
             patientListContainer.innerHTML = `<p class="text-gray-500 py-8 text-center">No patients found.</p>`;
             document.getElementById('paginationContainer').innerHTML = '';
+            paginationContainer.classList.add('hidden');
             return;
         }
+        paginationContainer.classList.remove('hidden');
         const table = document.createElement('table');
         table.className = 'min-w-full';
         table.innerHTML = `<thead><tr><th class="w-12"><input type="checkbox" class="h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
@@ -307,6 +349,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="detail-card-body">
                 ${createEditItem('First Name', info.full_name?.first_name, `${basePath}.full_name.first_name`)}
+                ${createEditItem('Middle Initial', info.full_name?.middle_initial, `${basePath}.full_name.middle_initial`)}
                 ${createEditItem('Last Name', info.full_name?.last_name, `${basePath}.full_name.last_name`)}
                 ${createEditItem('Record #', info.patient_record_number, `${basePath}.patient_record_number`)}
                 ${createEditItem('Date of Birth', info.date_of_birth, `${basePath}.date_of_birth`)}
@@ -315,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         </div>`;
         } else {
-            // --- VIEW MODE ---
+            // --- VIEW MODE (No changes needed here) ---
             content = `
         <div class="detail-card">
             <div class="detail-card-header">
@@ -337,8 +380,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderGuardianInfo(info, basePath) {
         const container = document.getElementById('patientInfo');
-        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.last_name].filter(Boolean).join(' ');
-        let content = `
+        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.middle_initial, info.guardian_name?.last_name].filter(Boolean).join(' ');
+
+        let content = '';
+
+        if (isEditMode) {
+            // --- EDIT MODE ---
+            content = `
+        <div class="detail-card">
+            <div class="detail-card-header">
+                <i class="fa-solid fa-shield-halved text-slate-500"></i>
+                Guardian Information
+            </div>
+            <div class="detail-card-body">
+                ${createEditItem('Rank', info.guardian_name?.rank, `${basePath}.guardian_name.rank`)}
+                ${createEditItem('First Name', info.guardian_name?.first_name, `${basePath}.guardian_name.first_name`)}
+                ${createEditItem('Middle Initial', info.guardian_name?.middle_initial, `${basePath}.guardian_name.middle_initial`)}
+                ${createEditItem('Last Name', info.guardian_name?.last_name, `${basePath}.guardian_name.last_name`)}
+                ${createEditItem('AFPSN', info.afpsn, `${basePath}.afpsn`)}
+                ${createEditItem('Branch of Service', info.branch_of_service, `${basePath}.branch_of_service`)}
+                ${createEditItem('Unit Assignment', info.unit_assignment, `${basePath}.unit_assignment`)}
+            </div>
+        </div>`;
+        } else {
+            // --- VIEW MODE (No changes needed here) ---
+            content = `
         <div class="detail-card">
             <div class="detail-card-header">
                 <i class="fa-solid fa-shield-halved text-slate-500"></i>
@@ -353,6 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </div>`;
+        }
         container.innerHTML += content;
     }
     function renderConsultations(consultations) {
@@ -372,33 +439,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let content = `<div class="space-y-4">`;
 
-        (consultations).forEach(item => {
-            // Helper to only render a section if the value exists
-            const renderDetail = (label, value) => {
-                if (!value) return '';
-                return `<div>
-                        <strong class="text-slate-600">${label}:</strong>
-                        <p class="whitespace-pre-wrap">${value}</p>
-                    </div>`;
-            };
+        consultations.forEach((item, index) => {
+            const basePath = `medical_encounters.consultations.${index}`;
+            const vitals = item.vitals || {};
 
-            content += `
-            <div class="detail-card">
-                <div class="detail-card-header flex justify-between items-center">
-                    <span>
-                        <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
-                        <strong>Date:</strong> ${item.consultation_date || 'N/A'}
-                    </span>
-                    ${item.age_at_visit ? `<span class="text-sm bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: ${item.age_at_visit}</span>` : ''}
-                </div>
-                <div class="detail-card-body grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            content += `<div class="detail-card">
+            <div class="detail-card-header flex justify-between items-center">
+                <span>
+                    <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
+                    <strong>Date:</strong> ${isEditMode ? `<input type="date" data-path="${basePath}.consultation_date" value="${item.consultation_date || ''}" class="edit-input w-40 ml-2">` : (item.consultation_date || 'N/A')}
+                </span>
+                ${item.age_at_visit ? `<span class="text-sm bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: ${item.age_at_visit}</span>` : ''}
+            </div>
+            <div class="detail-card-body">`;
+
+            if (isEditMode) {
+                content += `
+                ${createEditItem("Chief Complaint", item.chief_complaint, `${basePath}.chief_complaint`)}
+                ${createEditItem("Diagnosis", item.diagnosis, `${basePath}.diagnosis`)}
+                ${createEditItem("Notes", item.notes, `${basePath}.notes`)}
+                ${createEditItem("Treatment Plan", item.treatment_plan, `${basePath}.treatment_plan`)}
+                ${createEditItem("Attending Physician", item.attending_physician, `${basePath}.attending_physician`)}
+            `;
+            } else {
+                const renderDetail = (label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '';
+                content += `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     ${renderDetail('Chief Complaint', item.chief_complaint)}
                     ${renderDetail('Diagnosis / Assessment', item.diagnosis)}
                     ${renderDetail('Notes / HPI', item.notes)}
                     ${renderDetail('Treatment Plan', item.treatment_plan)}
                     ${renderDetail('Attending Physician', item.attending_physician)}
-                </div>
-            </div>`;
+                </div>`;
+            }
+
+            content += `</div></div>`;
         });
 
         content += `</div>`;
@@ -407,15 +482,42 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLabResults(labs) {
         const container = document.getElementById('labResults');
         if (!labs || labs.length === 0) return;
-        let content = '';
-        (labs).forEach(lab => {
-            content += `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-vial text-slate-500"></i>
-                ${lab.test_type || 'Lab Report'} - <span class="font-normal text-base ml-1">${lab.date_performed || ''}</span>
+
+        let content = '<h3 class="text-xl font-semibold text-gray-700 mb-4 flex items-center gap-2"><i class="fa-solid fa-vial text-slate-500"></i>Laboratory Results</h3><div class="space-y-6">';
+
+        (labs || []).forEach((lab, index) => {
+            const basePath = `medical_encounters.lab_results.${index}`;
+            content += `<div class="detail-card">
+            <div class="detail-card-header flex justify-between items-center">
+                <h4 class="text-lg font-semibold text-green-600">${lab.test_type || 'Lab Report'}</h4>
+                <span class="text-sm font-medium text-gray-500">${lab.date_performed || 'N/A'}</span>
             </div>
-            <div class="detail-card-body">
+            <div class="detail-card-body">`;
+
+            if (isEditMode) {
+                content += `
+                <table class="min-w-full text-sm">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left font-medium text-slate-600">Test</th>
+                            <th class="px-4 py-2 text-left font-medium text-slate-600">Result</th>
+                            <th class="px-4 py-2 text-left font-medium text-slate-600">Reference Range</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(lab.results || []).map((res, resultIndex) => {
+                    const resultBasePath = `${basePath}.results.${resultIndex}`;
+                    return `<tr>
+                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.test_name" value="${res.test_name || ''}"></td>
+                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.value" value="${res.value || ''} ${res.unit || ''}"></td>
+                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.reference_range" value="${res.reference_range || ''}"></td>
+                            </tr>`;
+                }).join('')}
+                    </tbody>
+                </table>
+            `;
+            } else {
+                content += `
                 <table class="min-w-full text-sm">
                     <thead class="bg-slate-50">
                         <tr>
@@ -433,24 +535,35 @@ document.addEventListener('DOMContentLoaded', () => {
                             </tr>
                         `).join('')}
                     </tbody>
-                </table>
-            </div>
-        </div>`;
+                </table>`;
+            }
+            content += '</div></div>';
         });
+        content += `</div>`;
         container.innerHTML = content;
     }
     function renderRadiologyReports(reports) {
         const container = document.getElementById('radiologyReports');
         if (!reports || reports.length === 0) return;
+
         let content = '';
-        (reports).forEach(report => {
-            content += `
-        <div class="detail-card">
+
+        (reports || []).forEach((report, index) => {
+            const basePath = `medical_encounters.radiology_reports.${index}`;
+            content += `<div class="detail-card">
             <div class="detail-card-header">
                 <i class="fa-solid fa-x-ray text-slate-500"></i>
                 ${report.examination || 'Radiology Report'} - <span class="font-normal text-base ml-1">${report.date_performed || ''}</span>
             </div>
-            <div class="detail-card-body">
+            <div class="detail-card-body">`;
+
+            if (isEditMode) {
+                content += `
+                ${createEditItem("Findings", report.findings, `${basePath}.findings`)}
+                ${createEditItem("Impression", report.impression, `${basePath}.impression`)}
+            `;
+            } else {
+                content += `
                 <div class="space-y-2">
                     <div>
                         <h4 class="font-semibold text-slate-700">Findings:</h4>
@@ -460,9 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h4 class="font-semibold text-slate-700">Impression:</h4>
                         <p class="font-medium text-slate-800 whitespace-pre-wrap">${report.impression || 'N/A'}</p>
                     </div>
-                </div>
-            </div>
-        </div>`;
+                </div>`;
+            }
+            content += '</div></div>';
         });
         container.innerHTML = content;
     }
