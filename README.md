@@ -1,10 +1,10 @@
-# Boveda: AI-Powered Patient Record Digitization
+# Boveda: AI-Powered Patient Record Digitization Module
 
 <p align="center">
 <img src="./backend/public/logo.png" alt="Boveda Logo" width="120">
 </p>
 
-Boveda is a full-stack web application designed to streamline the digitization of patient medical records. It leverages the Google Gemini API to perform multimodal data extraction from PDF documents, including OCR for handwritten text. The extracted information is then populated into a user-friendly interface where it can be reviewed, edited, and saved to a PostgreSQL database.
+This Boveda module is a full-stack web application designed to streamline the digitization of patient medical records. It leverages the Google Gemini API to perform multimodal data extraction from PDF documents, including OCR for handwritten text. The extracted information is then populated into a user-friendly interface where it can be reviewed, edited, and saved to a PostgreSQL database.
 
  ## Key Features
 
