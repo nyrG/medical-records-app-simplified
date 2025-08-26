@@ -6,7 +6,7 @@ import { ExtractionService } from './extraction.service';
 import { GeminiApiExceptionFilter } from './gemini-api.filter'; // 1. Import the filter
 
 @Controller('api/extraction')
-@UseFilters(new GeminiApiExceptionFilter()) // 2. Apply the filter to the controller
+@UseFilters(new GeminiApiExceptionFilter())
 export class ExtractionController {
   constructor(private readonly extractionService: ExtractionService) {}
 
@@ -17,6 +17,7 @@ export class ExtractionController {
       throw new BadRequestException('No file uploaded.');
     }
     
-    return this.extractionService.extractDataFromPdf(file.buffer);
+    // CHANGE THIS LINE: Pass the entire 'file' object
+    return this.extractionService.extractDataFromPdf(file);
   }
 }
