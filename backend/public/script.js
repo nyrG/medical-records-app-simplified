@@ -31,7 +31,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const API = {
         async getPatients(page, limit) { const r = await fetch(`/api/patients?page=${page}&limit=${limit}`); if (!r.ok) throw new Error('Failed to fetch patients'); return r.json(); },
         async createPatient(data) { const r = await fetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error('Failed to create patient'); return r.json(); },
-        async updatePatient(id, data) { const r = await fetch(`/api/patients/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error('Failed to update patient'); return r.json(); },
+        async updatePatient(id, data) {
+            const r = await fetch(`/api/patients/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) {
+                // Create a custom error that includes the response
+                const error = new Error('Failed to update patient');
+                error.response = r; // Attach the original response object
+                throw error;
+            }
+            return r.json();
+        },
         async deletePatient(id) { const r = await fetch(`/api/patients/${id}`, { method: 'DELETE' }); if (!r.ok) throw new Error('Failed to delete patient'); },
         async processPdf(formData) { const r = await fetch('/api/extraction/upload', { method: 'POST', body: formData }); if (!r.ok) { const e = await r.json(); throw new Error(e.message || 'Failed to process PDF'); } return r.json(); }
     };
@@ -111,24 +119,16 @@ document.addEventListener('DOMContentLoaded', () => {
             selectPatient(savedPatient.id);
         } catch (error) {
             console.error('Failed to save patient:', error);
-
-            // **NEW:** Attempt to get a more detailed error message from the backend
             let detailedError = 'Could not save patient data.';
-            if (error.message.includes('Failed to create patient') || error.message.includes('Failed to update patient')) {
+            // This check will now work if error.response exists
+            if (error.response) {
                 try {
-                    // We assume the actual error is in a nested JSON response
-                    // This is a common pattern for backend validation errors
-                    const backendError = JSON.parse(error.message.split('\n')[1] || '{}');
-                    if (backendError.message) {
-                        detailedError = Array.isArray(backendError.message) ? backendError.message.join(', ') : backendError.message;
+                    const responseBody = await error.response.json();
+                    if (responseBody.message) {
+                        detailedError = Array.isArray(responseBody.message) ? responseBody.message.join(', ') : responseBody.message;
                     }
-                } catch (e) {
-                    // If parsing fails, we'll just use the generic message
-                }
-            } else {
-                detailedError = error.message;
+                } catch (e) { /* Fallback if JSON parsing fails */ }
             }
-
             alert(`Error: ${detailedError}`);
         }
     }
@@ -294,7 +294,29 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderPatientInfo(info, basePath) {
         const container = document.getElementById('patientInfo');
         const fullName = [info.full_name?.first_name, info.full_name?.middle_initial, info.full_name?.last_name].filter(Boolean).join(' ');
-        let content = `
+
+        let content = '';
+
+        if (isEditMode) {
+            // --- EDIT MODE ---
+            content = `
+        <div class="detail-card">
+            <div class="detail-card-header">
+                <i class="fa-solid fa-user-circle text-slate-500"></i>
+                Patient Demographics
+            </div>
+            <div class="detail-card-body">
+                ${createEditItem('First Name', info.full_name?.first_name, `${basePath}.full_name.first_name`)}
+                ${createEditItem('Last Name', info.full_name?.last_name, `${basePath}.full_name.last_name`)}
+                ${createEditItem('Record #', info.patient_record_number, `${basePath}.patient_record_number`)}
+                ${createEditItem('Date of Birth', info.date_of_birth, `${basePath}.date_of_birth`)}
+                ${createEditItem('Category', info.category, `${basePath}.category`)}
+                ${createEditItem('Address', info.address, `${basePath}.address`)}
+            </div>
+        </div>`;
+        } else {
+            // --- VIEW MODE ---
+            content = `
         <div class="detail-card">
             <div class="detail-card-header">
                 <i class="fa-solid fa-user-circle text-slate-500"></i>
@@ -310,6 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         </div>`;
+        }
         container.innerHTML += content;
     }
     function renderGuardianInfo(info, basePath) {
