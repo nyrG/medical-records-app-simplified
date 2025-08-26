@@ -17,12 +17,13 @@ export class PatientsService {
   create(createPatientDto: CreatePatientDto): Promise<Patient> {
     const patient = this.patientsRepository.create(createPatientDto);
     
-    // **Safety Check**: Ensure patient_info and full_name exist before creating the name
+    // **NEW**: Safety check to ensure critical data exists before saving
     const info = createPatientDto.patient_info as any;
-    if (!info || !info.full_name) {
-        throw new BadRequestException('Patient data is incomplete. Missing patient_info or full_name.');
+    if (!info || !info.full_name || !info.full_name.first_name || !info.full_name.last_name) {
+        throw new BadRequestException('Patient data is incomplete. A first and last name are required to save a new record.');
     }
 
+    // This part remains the same
     patient.name = [info.full_name.first_name, info.full_name.last_name]
       .filter(Boolean)
       .join(' ');
@@ -30,18 +31,13 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  async findAll(page: number = 1, limit: number = 10): Promise<{ data: Patient[], total: number }> {
+  findAll(page: number = 1, limit: number = 10): Promise<{ data: Patient[], total: number }> {
     const skip = (page - 1) * limit;
-
-    const [data, total] = await this.patientsRepository.findAndCount({
-      skip: skip,
+    return this.patientsRepository.findAndCount({
+      skip,
       take: limit,
-      order: {
-        id: 'DESC' // Optional: order by newest first
-      }
-    });
-
-    return { data, total };
+      order: { id: 'DESC' }
+    }).then(([data, total]) => ({ data, total }));
   }
 
   async findOne(id: number): Promise<Patient> {
@@ -55,7 +51,6 @@ export class PatientsService {
   async update(id: number, updatePatientDto: UpdatePatientDto): Promise<Patient> {
     const patient = await this.findOne(id);
     
-    // **Safety Check for Update**
     if (updatePatientDto.patient_info) {
       const info = updatePatientDto.patient_info as any;
       if (info.full_name) {

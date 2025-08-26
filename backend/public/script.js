@@ -62,15 +62,97 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Handler Functions ---
-    async function handlePdfUpload() { /* ... same as before ... */ }
-    async function handleSaveChanges() { /* ... same as before ... */ }
-    async function handleDeletePatient() { /* ... same as before ... */ }
+    async function handlePdfUpload() {
+        const file = pdfFileInput.files[0];
+        fileError.textContent = '';
+        if (!file || file.type !== 'application/pdf') {
+            fileError.textContent = 'Please select a valid PDF file.';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        loadingOverlay.classList.remove('hidden');
+        uploadModal.classList.add('hidden');
+
+        try {
+            selectedPatient = await API.processPdf(formData);
+            isEditMode = true;
+            selectPatient(null); // Switch to detail view for the new patient
+            currentPatientName.textContent = 'Review & Create New Patient';
+            saveBtn.textContent = 'Create Patient';
+        } catch (error) {
+            alert(`Error processing PDF: ${error.message}`);
+        } finally {
+            loadingOverlay.classList.add('hidden');
+            pdfFileInput.value = '';
+        }
+    }
+    async function handleSaveChanges() {
+        const updatedData = {};
+        document.querySelectorAll('[data-path]').forEach(input => {
+            const path = input.dataset.path;
+            let value = input.value;
+            if (input.type === 'number' && value) {
+                value = parseFloat(value);
+            } else if (!value.trim()) {
+                value = null;
+            }
+            setValueByPath(updatedData, path, value);
+        });
+
+        try {
+            const savedPatient = selectedPatient.id
+                ? await API.updatePatient(selectedPatient.id, updatedData)
+                : await API.createPatient(updatedData);
+
+            await fetchAndDisplayPatients(currentPage);
+            selectPatient(savedPatient.id);
+        } catch (error) {
+            console.error('Failed to save patient:', error);
+
+            // **NEW:** Attempt to get a more detailed error message from the backend
+            let detailedError = 'Could not save patient data.';
+            if (error.message.includes('Failed to create patient') || error.message.includes('Failed to update patient')) {
+                try {
+                    // We assume the actual error is in a nested JSON response
+                    // This is a common pattern for backend validation errors
+                    const backendError = JSON.parse(error.message.split('\n')[1] || '{}');
+                    if (backendError.message) {
+                        detailedError = Array.isArray(backendError.message) ? backendError.message.join(', ') : backendError.message;
+                    }
+                } catch (e) {
+                    // If parsing fails, we'll just use the generic message
+                }
+            } else {
+                detailedError = error.message;
+            }
+
+            alert(`Error: ${detailedError}`);
+        }
+    }
+    async function handleDeletePatient() {
+        if (!selectedPatient?.id || !confirm(`Are you sure you want to delete patient ${selectedPatient.name}? This cannot be undone.`)) {
+            return;
+        }
+        try {
+            await API.deletePatient(selectedPatient.id);
+            selectedPatient = null;
+            isEditMode = false;
+            await fetchAndDisplayPatients(1); // Go back to the first page after deletion
+        } catch (error) {
+            console.error('Failed to delete patient:', error);
+            alert('Error: Could not delete patient.');
+        }
+    }
     // Add collapsed functions for brevity
     Object.assign(window, { handlePdfUpload: async function () { const file = pdfFileInput.files[0]; fileError.textContent = ''; if (!file || file.type !== 'application/pdf') { fileError.textContent = 'Please select a valid PDF file.'; return; } const formData = new FormData(); formData.append('file', file); loadingOverlay.classList.remove('hidden'); uploadModal.classList.add('hidden'); try { selectedPatient = await API.processPdf(formData); isEditMode = true; selectPatient(null); currentPatientName.textContent = 'Review & Create New Patient'; saveBtn.textContent = 'Create Patient'; } catch (error) { alert(`Error processing PDF: ${error.message}`); } finally { loadingOverlay.classList.add('hidden'); pdfFileInput.value = ''; } }, handleSaveChanges: async function () { const updatedData = {}; document.querySelectorAll('[data-path]').forEach(input => { const path = input.dataset.path; let value = input.value; if (input.type === 'number' && value) { value = parseFloat(value); } else if (!value.trim()) { value = null; } setValueByPath(updatedData, path, value); }); try { const savedPatient = selectedPatient.id ? await API.updatePatient(selectedPatient.id, updatedData) : await API.createPatient(updatedData); await fetchAndDisplayPatients(currentPage); selectPatient(savedPatient.id); } catch (error) { alert('Error: Could not save patient data.'); } }, handleDeletePatient: async function () { if (!selectedPatient?.id || !confirm(`Are you sure you want to delete patient ${selectedPatient.name}? This cannot be undone.`)) { return; } try { await API.deletePatient(selectedPatient.id); selectedPatient = null; isEditMode = false; await fetchAndDisplayPatients(1); } catch (error) { alert('Error: Could not delete patient.'); } } });
 
     // --- UI State & Rendering Functions ---
     function toggleEditMode() {
         if (!selectedPatient) return;
+        // If canceling the creation of a new patient, go back to the list
         if (!selectedPatient.id && isEditMode) {
             fetchAndDisplayPatients(currentPage);
             return;
@@ -81,11 +163,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateButtonState() {
-        if (!selectedPatient) return;
-        editBtn.textContent = isEditMode ? 'Cancel' : 'Edit Data';
-        saveBtn.classList.toggle('hidden', !isEditMode);
-        deleteBtn.classList.toggle('hidden', isEditMode);
-        saveBtn.textContent = selectedPatient.id ? 'Save Changes' : 'Create Patient';
+        if (!selectedPatient) {
+            controlsContainer.classList.add('hidden');
+            return;
+        }
+
+        const editBtnText = document.getElementById('editBtnText');
+        const editIcon = document.getElementById('editIcon');
+        const cancelIcon = document.getElementById('cancelIcon');
+
+        if (isEditMode) {
+            editBtnText.textContent = 'Cancel';
+            editIcon.classList.add('hidden');
+            cancelIcon.classList.remove('hidden');
+            editBtn.classList.replace('btn-primary', 'btn-secondary');
+            saveBtn.classList.remove('hidden');
+            deleteBtn.classList.add('hidden');
+        } else {
+            editBtnText.textContent = 'Edit Data';
+            editIcon.classList.remove('hidden');
+            cancelIcon.classList.add('hidden');
+            editBtn.classList.replace('btn-secondary', 'btn-primary');
+            saveBtn.classList.add('hidden');
+            deleteBtn.classList.remove('hidden');
+        }
     }
 
     function renderPatientList() {
