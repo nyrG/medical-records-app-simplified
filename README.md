@@ -6,7 +6,7 @@
 
 Boveda is a full-stack web application designed to streamline the digitization of patient medical records. It leverages the Google Gemini API to perform multimodal data extraction from PDF documents, including OCR for handwritten text. The extracted information is then populated into a user-friendly interface where it can be reviewed, edited, and saved to a PostgreSQL database.
 
- \#\# Key Features
+ ## Key Features
 
   * **AI-Powered Data Extraction**: Upload a patient's medical PDF, and the application's backend uses the Google Gemini 1.5 Flash model to intelligently parse and structure the data into a JSON format.
   * **Comprehensive CRUD Functionality**: A robust and intuitive interface for Creating, Reading, Updating, and Deleting patient records.
