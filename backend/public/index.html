@@ -4,98 +4,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editable Medical Record Viewer</title>
+    <title>Boveda: Patient Records Module</title>
+    <link rel="icon" href="logo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-50 text-slate-800">
 
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div class="text-white text-center">
-            <svg class="animate-spin h-10 w-10 text-white mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none"
-                viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                </path>
-            </svg>
-            <p class="text-xl font-medium">Processing Document with AI...</p>
-            <p>This may take a moment.</p>
+    <div class="main-container p-4 sm:p-6 lg:p-8">
+        <header class="header-bar">
+            <div class="flex items-center gap-4">
+                <img src="logo.png" alt="Boveda Logo" class="h-8 w-8">
+                <h1 class="text-2xl font-bold text-slate-900">Patient Records</h1>
+                <p id="recordCount" class="record-count-badge">0 Records</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="newPatientBtn" class="btn btn-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                            clip-rule="evenodd" />
+                    </svg>
+                    <span>Create from PDF</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="main-content bg-white rounded-lg shadow-sm">
+            <div id="patientListContainer" class="overflow-x-auto">
+            </div>
+            <footer id="paginationContainer" class="p-4 border-t border-slate-200 flex items-center justify-between">
+            </footer>
+        </main>
+
+        <div id="patientDetailContainer" class="hidden mt-6">
+            <div id="controlsContainer"
+                class="sticky top-4 z-10 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-sm mb-6 flex items-center justify-between">
+                <h2 id="currentPatientName" class="text-xl font-bold text-gray-800"></h2>
+                <div id="actionButtons" class="flex gap-2">
+                    <button id="backToListBtn" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>Back to List</span>
+                    </button>
+
+                    <button id="editBtn" class="btn btn-primary">
+                        <i id="editIcon" class="fa-solid fa-pencil"></i>
+                        <i id="cancelIcon" class="fa-solid fa-xmark hidden"></i>
+                        <span id="editBtnText">Edit Data</span>
+                    </button>
+
+                    <button id="saveBtn" class="btn btn-success hidden">
+                        <i id="saveIcon" class="fa-solid fa-check"></i>
+                        <span id="saveBtnText">Save Changes</span>
+                    </button>
+                    <button id="deleteBtn" class="btn btn-danger">
+                        <i class="fa-solid fa-trash"></i>
+                        <span>Delete</span>
+                    </button>
+                </div>
+            </div>
+            <div id="recordContainer"></div>
         </div>
     </div>
 
     <div id="uploadModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 z-40 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
             <h2 class="text-2xl font-bold mb-4">Create New Patient from PDF</h2>
-            <p class="text-gray-600 mb-6">Select a patient's medical document. The AI will extract the information and
-                pre-fill the form for your review.</p>
-            <div>
-                <input type="file" id="pdfFile" accept=".pdf"
+            <p class="text-gray-600 mb-6">Select a medical document. The AI will extract the information for your
+                review.</p>
+            <div> <input type="file" id="pdfFile" accept=".pdf"
                     class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                 <p id="fileError" class="text-red-500 text-sm mt-2"></p>
             </div>
-            <div class="mt-8 flex justify-end gap-4">
-                <button id="closeModalBtn"
-                    class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+            <div class="mt-8 flex justify-end gap-4"> <button id="closeModalBtn"
+                    class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
                 <button id="processPdfBtn"
-                    class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Upload
-                    & Process</button>
+                    class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Upload &
+                    Process</button>
             </div>
         </div>
     </div>
-
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-6xl">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Editable Medical Record Viewer</h1>
-            <p class="text-gray-600 mt-2">View, create, and edit patient medical histories from the database.</p>
-        </header>
-
-        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
-            <div class="flex flex-wrap gap-4 items-center justify-between">
-                <h2 class="text-2xl font-bold text-gray-800">Patients</h2>
-                <button id="newPatientBtn"
-                    class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
-                    + Create Patient from PDF
-                </button>
-                <button id="dummyDataBtn"
-                    class="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition-colors">
-                    + Create with Dummy Data
-                </button>
-            </div>
-            <div id="patientListContainer" class="mt-6 overflow-x-auto">
-            </div>
-        </div>
-
-        <div id="controlsContainer"
-            class="hidden sticky top-4 z-10 bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-md mb-8 flex flex-wrap gap-4 items-center justify-between">
-            <h2 id="currentPatientName" class="text-xl font-bold text-gray-800"></h2>
-            <div id="actionButtons">
-                <button id="editBtn"
-                    class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Edit
-                    Data</button>
-                <button id="saveBtn"
-                    class="hidden bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">Save
-                    Changes</button>
-                <button id="deleteBtn"
-                    class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">Delete
-                    Patient</button>
-            </div>
-        </div>
-
-        <main id="recordContainer"></main>
-
-        <div id="placeholder" class="text-center py-16 px-6 bg-white rounded-lg shadow-md">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="text-white text-center"> <svg class="animate-spin h-10 w-10 text-white mx-auto mb-4"
+                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
             </svg>
-            <h3 class="mt-2 text-lg font-medium text-gray-900">No Patient Selected</h3>
-            <p class="mt-1 text-sm text-gray-500">Select a patient from the list above to view their details.</p>
+            <p class="text-xl font-medium">Processing Document...</p>
         </div>
     </div>
 

@@ -7,18 +7,17 @@ export class Patient {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // We'll store the patient's name separately for easy searching/listing.
   @Column()
   name: string; 
 
-  // The 'jsonb' type is perfect for storing complex, nested JSON data.
-  // It allows us to store the entire record structure in a single column.
   @Column('jsonb')
   patient_info: object;
 
+  // Change the type to allow null
   @Column('jsonb', { nullable: true })
-  guardian_info: object;
+  guardian_info: object | null;
 
+  // Change the type to allow null
   @Column('jsonb', { nullable: true })
-  medical_encounters: object;
+  medical_encounters: object | null;
 }
