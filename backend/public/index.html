@@ -24,6 +24,16 @@
                 <p id="recordCount" class="record-count-badge">0 Records</p>
             </div>
             <div class="flex items-center gap-2">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name..." class="search-input">
+                </div>
+
+                <button id="deleteSelectedBtn" class="btn btn-danger hidden">
+                    <i class="fa-solid fa-trash-can"></i>
+                    <span id="deleteSelectedCount">Delete Selected</span>
+                </button>
+                
                 <button id="newPatientBtn" class="btn btn-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd"
@@ -101,6 +111,9 @@
         </div>
     </div>
 
+    <footer class="text-center py-6 text-slate-400 text-sm">
+        <p>&copy; 2025 Boveda Patient Records Module. All Rights Reserved.</p>
+    </footer>
     <script src="script.js"></script>
 </body>
 

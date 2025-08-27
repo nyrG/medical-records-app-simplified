@@ -2,7 +2,7 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm'; 
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -35,13 +35,21 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  findAll(page: number = 1, limit: number = 10): Promise<{ data: Patient[], total: number }> {
+  async findAll(page: number, limit: number, search?: string) {
     const skip = (page - 1) * limit;
-    return this.patientsRepository.findAndCount({
-      skip,
+    
+    const whereCondition = search
+      ? { name: ILike(`%${search}%`) } 
+      : {};
+
+    const [data, total] = await this.patientsRepository.findAndCount({
+      where: whereCondition,
       take: limit,
-      order: { id: 'DESC' }
-    }).then(([data, total]) => ({ data, total }));
+      skip: skip,
+      order: { name: 'ASC' },
+    });
+
+    return { data, total };
   }
 
   async findOne(id: number): Promise<Patient> {
@@ -70,7 +78,7 @@ export class PatientsService {
   }
 
   async remove(id: number): Promise<void> {
-    const result = await this.patientsRepository.delete(id);
+    const result = await this.patientsRepository.softDelete(id); 
     if (result.affected === 0) {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }

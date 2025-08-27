@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let totalPatients = 0;
     let rowsPerPage = 10;
+    let selectedPatientIds = new Set();
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
@@ -27,10 +28,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const patientDetailContainer = document.getElementById('patientDetailContainer');
     const backToListBtn = document.getElementById('backToListBtn');
     const recordCount = document.getElementById('recordCount');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const deleteSelectedCount = document.getElementById('deleteSelectedCount');
+    const searchInput = document.getElementById('searchInput');
 
     // --- API Functions ---
     const API = {
-        async getPatients(page, limit) { const r = await fetch(`/api/patients?page=${page}&limit=${limit}`); if (!r.ok) throw new Error('Failed to fetch patients'); return r.json(); },
+        async getPatients(page, limit) {
+            // Get the current search value and encode it for the URL
+            const searchTerm = searchInput.value.trim();
+            const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+
+            const r = await fetch(`/api/patients?page=${page}&limit=${limit}${searchQuery}`);
+            if (!r.ok) throw new Error('Failed to fetch patients');
+            return r.json();
+        },
         async createPatient(data) { const r = await fetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error('Failed to create patient'); return r.json(); },
         async updatePatient(id, data) {
             const r = await fetch(`/api/patients/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) {
@@ -69,6 +81,16 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPatientDetails();
         }
     });
+    patientListContainer.addEventListener('change', handleCheckboxChange);
+    deleteSelectedBtn.addEventListener('click', handleDeleteSelected);
+
+    let debounceTimer;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchAndDisplayPatients(1); // Fetch from page 1 with the new search term
+        }, 300); // Wait for 300ms of inactivity before searching
+    });
 
     // --- Handler Functions ---
     async function handlePdfUpload() {
@@ -98,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfFileInput.value = '';
         }
     }
+
     async function handleSaveChanges() {
         try {
             // --- UPDATE LOGIC ---
@@ -176,6 +199,61 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error: Could not delete patient.');
         }
     }
+    function handleCheckboxChange(e) {
+        const target = e.target;
+        const patientCheckboxes = document.querySelectorAll('.patient-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+        if (target.id === 'selectAllCheckbox') {
+            patientCheckboxes.forEach(checkbox => {
+                checkbox.checked = target.checked;
+                const id = parseInt(checkbox.dataset.id, 10);
+                if (target.checked) {
+                    selectedPatientIds.add(id);
+                } else {
+                    selectedPatientIds.delete(id);
+                }
+            });
+        }
+
+        if (target.classList.contains('patient-checkbox')) {
+            const id = parseInt(target.dataset.id, 10);
+            if (target.checked) {
+                selectedPatientIds.add(id);
+            } else {
+                selectedPatientIds.delete(id);
+            }
+            // Update "Select All" checkbox state
+            selectAllCheckbox.checked = patientCheckboxes.length === selectedPatientIds.size;
+        }
+
+        updateBulkActionUI();
+    }
+
+    async function handleDeleteSelected() {
+        const selectedCount = selectedPatientIds.size;
+        if (selectedCount === 0) return;
+
+        if (confirm(`Are you sure you want to delete ${selectedCount} patient record(s)? This cannot be undone.`)) {
+            try {
+                // Create an array of delete promises
+                const deletePromises = Array.from(selectedPatientIds).map(id => API.deletePatient(id));
+                // Wait for all delete operations to complete
+                await Promise.all(deletePromises);
+
+                // Reset state and refresh the view
+                selectedPatientIds.clear();
+                updateBulkActionUI();
+                await fetchAndDisplayPatients(1); // Go back to the first page
+
+            } catch (error) {
+                console.error('Failed to delete selected patients:', error);
+                alert('An error occurred while deleting patient records.');
+            }
+        }
+    }
+
+
     // --- UI State & Rendering Functions ---
     function toggleEditMode() {
         if (!selectedPatient) return;
@@ -225,32 +303,53 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateBulkActionUI() {
+        const selectedCount = selectedPatientIds.size;
+        if (selectedCount > 0) {
+            deleteSelectedBtn.classList.remove('hidden');
+            deleteSelectedCount.textContent = `Delete Selected (${selectedCount})`;
+        } else {
+            deleteSelectedBtn.classList.add('hidden');
+        }
+    }
+
     function renderPatientList() {
         mainContent.classList.remove('hidden');
         patientDetailContainer.classList.add('hidden');
         recordCount.textContent = `${totalPatients} Records`;
         patientListContainer.innerHTML = '';
 
-        // Get the pagination container element
         const paginationContainer = document.getElementById('paginationContainer');
-
         if (allPatients.length === 0) {
             patientListContainer.innerHTML = `<p class="text-gray-500 py-8 text-center">No patients found.</p>`;
-            document.getElementById('paginationContainer').innerHTML = '';
             paginationContainer.classList.add('hidden');
             return;
         }
         paginationContainer.classList.remove('hidden');
+
         const table = document.createElement('table');
         table.className = 'min-w-full';
-        table.innerHTML = `<thead><tr><th class="w-12"><input type="checkbox" class="h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
+
+        // Add the "block" class to the input element
+        table.innerHTML = `<thead><tr><th class="w-12 align-middle"><input type="checkbox" id="selectAllCheckbox" class="block h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
+
         const tbody = table.querySelector('tbody');
+
         allPatients.forEach(patient => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><input type="checkbox" class="h-4 w-4 rounded border-gray-300"></td><td>${patient.name || 'N/A'}</td><td>${patient.patient_info?.patient_record_number || 'N/A'}</td><td>${patient.patient_info?.date_of_birth || 'N/A'}</td><td>${patient.patient_info?.category || 'N/A'}</td>`;
-            tr.addEventListener('click', () => selectPatient(patient.id));
+            // Add a class and data-id to the row checkbox
+            tr.innerHTML = `<td><input type="checkbox" class="patient-checkbox h-4 w-4 rounded border-gray-300" data-id="${patient.id}"></td><td>${patient.name || 'N/A'}</td><td>${patient.patient_info?.patient_record_number || 'N/A'}</td><td>${patient.patient_info?.date_of_birth || 'N/A'}</td><td>${patient.patient_info?.category || 'N/A'}</td>`;
+
+            // Add event listener to the row itself for navigation
+            tr.addEventListener('click', (e) => {
+                // Only navigate if the user didn't click the checkbox
+                if (e.target.type !== 'checkbox') {
+                    selectPatient(patient.id);
+                }
+            });
             tbody.appendChild(tr);
         });
+
         patientListContainer.appendChild(table);
         renderPagination();
     }

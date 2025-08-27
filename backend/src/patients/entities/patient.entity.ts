@@ -1,6 +1,6 @@
 // backend/src/patients/entities/patient.entity.ts
 
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
 
 @Entity()
 export class Patient {
@@ -20,4 +20,14 @@ export class Patient {
   // Change the type to allow null
   @Column('jsonb', { nullable: true })
   medical_encounters: object | null;
+
+  @CreateDateColumn()
+  created_at: Date;
+
+  @UpdateDateColumn()
+  updated_at: Date;
+
+  // This will handle soft deletes automatically
+  @DeleteDateColumn()
+  deleted_at: Date;
 }
