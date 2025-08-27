@@ -31,17 +31,15 @@ body {
     margin-right: auto; /* Centers the container horizontally */
 }
 
-/* --- Compact Layout Adjustments --- */
-.header-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    /* Reduced margin */
-}
-
 .main-content {
     border: 1px solid var(--border-color);
+}
+
+.header-bar {
+    display: flex;
+    flex-direction: column; /* Stack the rows vertically */
+    gap: 0.5rem; /* Space between the two rows */
+    margin-bottom: 1rem;
 }
 
 .btn {
@@ -251,6 +249,55 @@ body {
     outline: none;
     border-color: var(--color-primary);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.sortable-header {
+    cursor: pointer;
+    user-select: none; /* Prevents text selection on click */
+    position: relative;
+}
+.sortable-header:hover {
+    background-color: #f8fafc; /* slate-50 */
+}
+.sortable-header span {
+    display: inline-block;
+}
+.sortable-header .fa-solid {
+    position: absolute;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+}
+
+.sort-controls .btn-secondary {
+    background-color: #f8fafc; /* A slightly different shade for controls */
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+    width: 100%;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    z-index: 20;
+    overflow: hidden;
+}
+
+.dropdown-item {
+    display: block;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    color: var(--text-body);
+    transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+    background-color: var(--color-secondary-hover-bg);
 }
 
 .card {

@@ -17,31 +17,64 @@
 <body class="bg-slate-50 text-slate-800">
 
     <div class="main-container p-4 sm:p-6 lg:p-8">
-        <header class="header-bar">
-            <div class="flex items-center gap-4">
-                <img src="logo.png" alt="Boveda Logo" class="h-8 w-8">
-                <h1 class="text-2xl font-bold text-slate-900">Patient Records</h1>
-                <p id="recordCount" class="record-count-badge">0 Records</p>
+        <header class="flex flex-col gap-4 mb-4">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-4">
+                    <img src="logo.png" alt="Boveda Logo" class="h-8 w-8">
+                    <h1 class="text-2xl font-bold text-slate-900">Patient Records</h1>
+                    <p id="recordCount" class="record-count-badge">0 Records</p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button id="deleteSelectedBtn" class="btn btn-danger hidden">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span id="deleteSelectedCount">Delete Selected</span>
+                    </button>
+                    <button id="newPatientBtn" class="btn btn-primary">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Create from PDF</span>
+                    </button>
+                </div>
             </div>
-            <div class="flex items-center gap-2">
+
+            <div class="flex items-center justify-between w-full">
                 <div class="relative">
                     <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                     <input type="text" id="searchInput" placeholder="Search by name..." class="search-input">
                 </div>
 
-                <button id="deleteSelectedBtn" class="btn btn-danger hidden">
-                    <i class="fa-solid fa-trash-can"></i>
-                    <span id="deleteSelectedCount">Delete Selected</span>
-                </button>
-                
-                <button id="newPatientBtn" class="btn btn-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <span>Create from PDF</span>
-                </button>
+                <div id="listControls" class="flex items-center justify-end gap-2">
+                    <div class="relative">
+                        <button id="categoryFilterBtn" class="btn btn-secondary w-48 justify-between">
+                            <i class="fa-solid fa-filter"></i>
+                            <span id="categoryFilterText">All Categories</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div id="categoryFilterMenu" class="dropdown-menu hidden">
+                        </div>
+                    </div>
+                    <div class="sort-controls flex items-center gap-1">
+                        <div class="relative">
+                            <button id="sortDropdownBtn" class="btn btn-secondary w-48 justify-between">
+                                <i class="fa-solid fa-sort"></i>
+                                <span id="sortByText">Patient Name</span>
+                                <i class="fa-solid fa-chevron-down"></i>
+                            </button>
+                            <div id="sortDropdownMenu" class="dropdown-menu hidden">
+                                <a href="#" class="dropdown-item" data-sort="name">Patient Name</a>
+                                <a href="#" class="dropdown-item" data-sort="patient_info.patient_record_number">Record
+                                    #</a>
+                                <a href="#" class="dropdown-item" data-sort="patient_info.date_of_birth">Date of
+                                    Birth</a>
+                                <a href="#" class="dropdown-item" data-sort="created_at">Date Created</a>
+                                <a href="#" class="dropdown-item" data-sort="updated_at">Last Modified</a>
+                            </div>
+                        </div>
+                        <button id="sortOrderBtn" class="btn btn-secondary !p-2">
+                            <i id="sortOrderIcon" class="fa-solid fa-arrow-up-long"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 

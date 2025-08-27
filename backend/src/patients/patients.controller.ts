@@ -7,7 +7,7 @@ import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Controller('api/patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(private readonly patientsService: PatientsService) { }
 
   @Post()
   create(@Body() createPatientDto: CreatePatientDto) {
@@ -19,8 +19,11 @@ export class PatientsController {
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
     @Query('search') search?: string,
+    @Query('sortBy') sortBy: string = 'name',
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
+    @Query('category') category?: string
   ) {
-    return this.patientsService.findAll(page, limit, search);
+    return this.patientsService.findAll(page, limit, search, sortBy, sortOrder, category);
   }
 
   @Get(':id')

@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalPatients = 0;
     let rowsPerPage = 10;
     let selectedPatientIds = new Set();
+    let sortBy = 'name';
+    let sortOrder = 'ASC';
+    let filterCategory = '';
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
@@ -15,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentPatientName = document.getElementById('currentPatientName');
     const newPatientBtn = document.getElementById('newPatientBtn');
     const editBtn = document.getElementById('editBtn');
+    const saveBtn = document.getElementById('saveBtn');
     const saveIcon = document.getElementById('saveIcon');
     const saveBtnText = document.getElementById('saveBtnText');
     const deleteBtn = document.getElementById('deleteBtn');
@@ -31,15 +35,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
     const deleteSelectedCount = document.getElementById('deleteSelectedCount');
     const searchInput = document.getElementById('searchInput');
+    const sortOrderBtn = document.getElementById('sortOrderBtn');
+    const sortOrderIcon = document.getElementById('sortOrderIcon');
+    const sortDropdownBtn = document.getElementById('sortDropdownBtn');
+    const sortByText = document.getElementById('sortByText');
+    const sortDropdownMenu = document.getElementById('sortDropdownMenu');
+    const listControls = document.getElementById('listControls');
+    const categoryFilterBtn = document.getElementById('categoryFilterBtn');
+    const categoryFilterText = document.getElementById('categoryFilterText');
+    const categoryFilterMenu = document.getElementById('categoryFilterMenu');
 
     // --- API Functions ---
     const API = {
         async getPatients(page, limit) {
-            // Get the current search value and encode it for the URL
             const searchTerm = searchInput.value.trim();
             const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+            const sortQuery = `&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+            // Add the filter query
+            const filterQuery = filterCategory ? `&category=${encodeURIComponent(filterCategory)}` : '';
 
-            const r = await fetch(`/api/patients?page=${page}&limit=${limit}${searchQuery}`);
+            const r = await fetch(`/api/patients?page=${page}&limit=${limit}${searchQuery}${sortQuery}${filterQuery}`);
             if (!r.ok) throw new Error('Failed to fetch patients');
             return r.json();
         },
@@ -59,11 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization & Data Fetching ---
     async function fetchAndDisplayPatients(page = 1) {
+        listControls.classList.remove('hidden'); // <-- Add this line to show controls
         try {
             const { data, total } = await API.getPatients(page, rowsPerPage);
             allPatients = data; totalPatients = total; currentPage = page;
             renderPatientList();
-        } catch (error) { patientListContainer.innerHTML = `<p class="text-red-500 text-center py-8">Error loading patient data.</p>`; }
+            populateCategoryFilter();
+        } catch (error) {
+            console.error("Error fetching patients:", error);
+            patientListContainer.innerHTML = `<p class="text-red-500 text-center py-8">Error loading patient data.</p>`;
+        }
     }
 
     // --- Event Listeners ---
@@ -83,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     patientListContainer.addEventListener('change', handleCheckboxChange);
     deleteSelectedBtn.addEventListener('click', handleDeleteSelected);
-
     let debounceTimer;
     searchInput.addEventListener('input', () => {
         clearTimeout(debounceTimer);
@@ -91,6 +110,26 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAndDisplayPatients(1); // Fetch from page 1 with the new search term
         }, 300); // Wait for 300ms of inactivity before searching
     });
+    sortOrderBtn.addEventListener('click', handleSortOrderToggle);
+    sortDropdownBtn.addEventListener('click', () => sortDropdownMenu.classList.toggle('hidden'));
+    sortDropdownMenu.addEventListener('click', handleSortByChange);
+    window.addEventListener('click', (e) => {
+        if (!sortDropdownBtn.contains(e.target)) {
+            sortDropdownMenu.classList.add('hidden');
+        }
+    });
+    categoryFilterBtn.addEventListener('click', () => categoryFilterMenu.classList.toggle('hidden'));
+    categoryFilterMenu.addEventListener('click', handleFilterChange);
+    window.addEventListener('click', (e) => {
+        if (!sortDropdownBtn.contains(e.target)) {
+            sortDropdownMenu.classList.add('hidden');
+        }
+        // Add this new condition to hide the category menu as well
+        if (!categoryFilterBtn.contains(e.target)) {
+            categoryFilterMenu.classList.add('hidden');
+        }
+    });
+
 
     // --- Handler Functions ---
     async function handlePdfUpload() {
@@ -112,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isEditMode = true;
             selectPatient(null); // Switch to detail view for the new patient
             currentPatientName.textContent = 'Review & Create New Patient';
-            saveBtn.textContent = 'Create Patient';
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
         } finally {
@@ -253,6 +291,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function handleSortOrderToggle() {
+        sortOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
+        updateSortUI();
+        fetchAndDisplayPatients(1);
+    }
+
+    function handleSortByChange(e) {
+        e.preventDefault();
+        const target = e.target.closest('.dropdown-item');
+        if (!target) return;
+
+        sortBy = target.dataset.sort;
+        updateSortUI();
+        fetchAndDisplayPatients(1);
+        sortDropdownMenu.classList.add('hidden'); // Hide menu after selection
+    }
+
+    function handleFilterChange(e) {
+        e.preventDefault();
+        const target = e.target.closest('.dropdown-item');
+        if (!target) return;
+
+        filterCategory = target.dataset.value;
+        categoryFilterText.textContent = target.textContent;
+        categoryFilterMenu.classList.add('hidden');
+        fetchAndDisplayPatients(1);
+    }
 
     // --- UI State & Rendering Functions ---
     function toggleEditMode() {
@@ -285,13 +350,13 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.classList.remove('hidden');
             deleteBtn.classList.add('hidden');
 
-            // Set the save button text and icon based on the context
+            // This logic correctly sets the text and icon based on context
             if (selectedPatient.id) {
                 saveBtnText.textContent = 'Save Changes';
-                saveIcon.className = 'fa-solid fa-check'; // Check icon
+                saveIcon.className = 'fa-solid fa-check'; // Check icon for saving
             } else {
                 saveBtnText.textContent = 'Create Patient';
-                saveIcon.className = 'fa-solid fa-plus'; // Plus icon
+                saveIcon.className = 'fa-solid fa-plus'; // Plus icon for creating
             }
         } else {
             editBtnText.textContent = 'Edit Data';
@@ -313,6 +378,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateSortUI() {
+        // Update the sort direction icon
+        sortOrderIcon.className = sortOrder === 'ASC' ? 'fa-solid fa-arrow-up-long' : 'fa-solid fa-arrow-down-long';
+
+        // Update the sort by button text
+        const selectedOption = document.querySelector(`.dropdown-item[data-sort="${sortBy}"]`);
+        if (selectedOption) {
+            sortByText.textContent = selectedOption.textContent;
+        }
+    }
+
+    // Don't forget to call this once on startup
+    updateSortUI();
+
     function renderPatientList() {
         mainContent.classList.remove('hidden');
         patientDetailContainer.classList.add('hidden');
@@ -330,7 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const table = document.createElement('table');
         table.className = 'min-w-full';
 
-        // Add the "block" class to the input element
+        // The header is now simple and static
         table.innerHTML = `<thead><tr><th class="w-12 align-middle"><input type="checkbox" id="selectAllCheckbox" class="block h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
 
         const tbody = table.querySelector('tbody');
@@ -403,7 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectPatient(id) {
         mainContent.classList.add('hidden');
-        patientDetailContainer.classList.remove('hidden'); // <-- THIS WAS THE BUG. Changed .add() to .remove()
+        patientDetailContainer.classList.remove('hidden');
+        listControls.classList.add('hidden');
 
         if (id) {
             selectedPatient = allPatients.find(p => p.id === id);
@@ -679,6 +759,27 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = content;
     }
     function setValueByPath(obj, path, value) { const keys = path.split('.'); let current = obj; for (let i = 0; i < keys.length - 1; i++) { const key = keys[i]; if (current[key] === undefined || current[key] === null) { current[key] = !isNaN(keys[i + 1]) ? [] : {}; } current = current[key]; } current[keys[keys.length - 1]] = value; }
+
+    function populateCategoryFilter() {
+        // This uses the "reverted" method of getting categories from the current list.
+        const categories = [...new Set(allPatients
+            .map(p => p.patient_info?.category)
+            .filter(Boolean)
+        )];
+
+        // Clear existing options and add the "All" option first
+        categoryFilterMenu.innerHTML = '<a href="#" class="dropdown-item" data-value="">All Categories</a>';
+
+        // Add an item for each unique category
+        categories.forEach(category => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'dropdown-item';
+            item.dataset.value = category;
+            item.textContent = category;
+            categoryFilterMenu.appendChild(item);
+        });
+    }
 
     // Start the application
     fetchAndDisplayPatients(1);
