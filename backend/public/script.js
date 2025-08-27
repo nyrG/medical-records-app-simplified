@@ -7,8 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalPatients = 0;
     let rowsPerPage = 10;
     let selectedPatientIds = new Set();
-    let sortBy = 'name';
-    let sortOrder = 'ASC';
+    let sortBy = 'updated_at'; // Change from 'name'
+    let sortOrder = 'DESC';   // Change from 'ASC'
     let filterCategory = '';
 
     // --- DOM Elements ---

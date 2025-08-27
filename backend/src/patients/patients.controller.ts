@@ -19,8 +19,8 @@ export class PatientsController {
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
     @Query('search') search?: string,
-    @Query('sortBy') sortBy: string = 'name',
-    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'ASC',
+    @Query('sortBy') sortBy: string = 'updated_at',
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'DESC',
     @Query('category') category?: string
   ) {
     return this.patientsService.findAll(page, limit, search, sortBy, sortOrder, category);

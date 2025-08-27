@@ -35,7 +35,7 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  async findAll(page: number, limit: number, search?: string, sortBy: string = 'name', sortOrder: 'ASC' | 'DESC' = 'ASC', category?: string) {
+  async findAll(page: number, limit: number, search?: string, sortBy: string = 'updated_at', sortOrder: 'ASC' | 'DESC' = 'DESC', category?: string) {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.patientsRepository.createQueryBuilder('patient');
