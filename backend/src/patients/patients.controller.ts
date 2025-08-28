@@ -1,13 +1,13 @@
 // backend/src/patients/patients.controller.ts
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query, DefaultValuePipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 
 @Controller('api/patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(private readonly patientsService: PatientsService) { }
 
   @Post()
   create(@Body() createPatientDto: CreatePatientDto) {
@@ -16,10 +16,14 @@ export class PatientsController {
 
   @Get()
   findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
+    @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
+    @Query('search') search?: string,
+    @Query('sortBy') sortBy: string = 'updated_at',
+    @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'DESC',
+    @Query('category') category?: string
   ) {
-    return this.patientsService.findAll(page, limit);
+    return this.patientsService.findAll(page, limit, search, sortBy, sortOrder, category);
   }
 
   @Get(':id')

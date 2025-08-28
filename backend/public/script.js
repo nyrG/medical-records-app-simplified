@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentPage = 1;
     let totalPatients = 0;
     let rowsPerPage = 10;
+    let selectedPatientIds = new Set();
+    let sortBy = 'updated_at'; // Change from 'name'
+    let sortOrder = 'DESC';   // Change from 'ASC'
+    let filterCategory = '';
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
@@ -14,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentPatientName = document.getElementById('currentPatientName');
     const newPatientBtn = document.getElementById('newPatientBtn');
     const editBtn = document.getElementById('editBtn');
+    const saveBtn = document.getElementById('saveBtn');
     const saveIcon = document.getElementById('saveIcon');
     const saveBtnText = document.getElementById('saveBtnText');
     const deleteBtn = document.getElementById('deleteBtn');
@@ -27,10 +32,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const patientDetailContainer = document.getElementById('patientDetailContainer');
     const backToListBtn = document.getElementById('backToListBtn');
     const recordCount = document.getElementById('recordCount');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const deleteSelectedCount = document.getElementById('deleteSelectedCount');
+    const searchInput = document.getElementById('searchInput');
+    const sortOrderBtn = document.getElementById('sortOrderBtn');
+    const sortOrderIcon = document.getElementById('sortOrderIcon');
+    const sortDropdownBtn = document.getElementById('sortDropdownBtn');
+    const sortByText = document.getElementById('sortByText');
+    const sortDropdownMenu = document.getElementById('sortDropdownMenu');
+    const listControls = document.getElementById('listControls');
+    const categoryFilterBtn = document.getElementById('categoryFilterBtn');
+    const categoryFilterText = document.getElementById('categoryFilterText');
+    const categoryFilterMenu = document.getElementById('categoryFilterMenu');
 
     // --- API Functions ---
     const API = {
-        async getPatients(page, limit) { const r = await fetch(`/api/patients?page=${page}&limit=${limit}`); if (!r.ok) throw new Error('Failed to fetch patients'); return r.json(); },
+        async getPatients(page, limit) {
+            const searchTerm = searchInput.value.trim();
+            const searchQuery = searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : '';
+            const sortQuery = `&sortBy=${sortBy}&sortOrder=${sortOrder}`;
+            // Add the filter query
+            const filterQuery = filterCategory ? `&category=${encodeURIComponent(filterCategory)}` : '';
+
+            const r = await fetch(`/api/patients?page=${page}&limit=${limit}${searchQuery}${sortQuery}${filterQuery}`);
+            if (!r.ok) throw new Error('Failed to fetch patients');
+            return r.json();
+        },
         async createPatient(data) { const r = await fetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) throw new Error('Failed to create patient'); return r.json(); },
         async updatePatient(id, data) {
             const r = await fetch(`/api/patients/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }); if (!r.ok) {
@@ -47,11 +74,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization & Data Fetching ---
     async function fetchAndDisplayPatients(page = 1) {
+        listControls.classList.remove('hidden'); // <-- Add this line to show controls
         try {
             const { data, total } = await API.getPatients(page, rowsPerPage);
             allPatients = data; totalPatients = total; currentPage = page;
             renderPatientList();
-        } catch (error) { patientListContainer.innerHTML = `<p class="text-red-500 text-center py-8">Error loading patient data.</p>`; }
+            populateCategoryFilter();
+        } catch (error) {
+            console.error("Error fetching patients:", error);
+            patientListContainer.innerHTML = `<p class="text-red-500 text-center py-8">Error loading patient data.</p>`;
+        }
     }
 
     // --- Event Listeners ---
@@ -69,6 +101,35 @@ document.addEventListener('DOMContentLoaded', () => {
             renderPatientDetails();
         }
     });
+    patientListContainer.addEventListener('change', handleCheckboxChange);
+    deleteSelectedBtn.addEventListener('click', handleDeleteSelected);
+    let debounceTimer;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchAndDisplayPatients(1); // Fetch from page 1 with the new search term
+        }, 300); // Wait for 300ms of inactivity before searching
+    });
+    sortOrderBtn.addEventListener('click', handleSortOrderToggle);
+    sortDropdownBtn.addEventListener('click', () => sortDropdownMenu.classList.toggle('hidden'));
+    sortDropdownMenu.addEventListener('click', handleSortByChange);
+    window.addEventListener('click', (e) => {
+        if (!sortDropdownBtn.contains(e.target)) {
+            sortDropdownMenu.classList.add('hidden');
+        }
+    });
+    categoryFilterBtn.addEventListener('click', () => categoryFilterMenu.classList.toggle('hidden'));
+    categoryFilterMenu.addEventListener('click', handleFilterChange);
+    window.addEventListener('click', (e) => {
+        if (!sortDropdownBtn.contains(e.target)) {
+            sortDropdownMenu.classList.add('hidden');
+        }
+        // Add this new condition to hide the category menu as well
+        if (!categoryFilterBtn.contains(e.target)) {
+            categoryFilterMenu.classList.add('hidden');
+        }
+    });
+
 
     // --- Handler Functions ---
     async function handlePdfUpload() {
@@ -90,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
             isEditMode = true;
             selectPatient(null); // Switch to detail view for the new patient
             currentPatientName.textContent = 'Review & Create New Patient';
-            saveBtn.textContent = 'Create Patient';
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
         } finally {
@@ -98,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pdfFileInput.value = '';
         }
     }
+
     async function handleSaveChanges() {
         try {
             // --- UPDATE LOGIC ---
@@ -176,6 +237,88 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Error: Could not delete patient.');
         }
     }
+    function handleCheckboxChange(e) {
+        const target = e.target;
+        const patientCheckboxes = document.querySelectorAll('.patient-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
+        if (target.id === 'selectAllCheckbox') {
+            patientCheckboxes.forEach(checkbox => {
+                checkbox.checked = target.checked;
+                const id = parseInt(checkbox.dataset.id, 10);
+                if (target.checked) {
+                    selectedPatientIds.add(id);
+                } else {
+                    selectedPatientIds.delete(id);
+                }
+            });
+        }
+
+        if (target.classList.contains('patient-checkbox')) {
+            const id = parseInt(target.dataset.id, 10);
+            if (target.checked) {
+                selectedPatientIds.add(id);
+            } else {
+                selectedPatientIds.delete(id);
+            }
+            // Update "Select All" checkbox state
+            selectAllCheckbox.checked = patientCheckboxes.length === selectedPatientIds.size;
+        }
+
+        updateBulkActionUI();
+    }
+
+    async function handleDeleteSelected() {
+        const selectedCount = selectedPatientIds.size;
+        if (selectedCount === 0) return;
+
+        if (confirm(`Are you sure you want to delete ${selectedCount} patient record(s)? This cannot be undone.`)) {
+            try {
+                // Create an array of delete promises
+                const deletePromises = Array.from(selectedPatientIds).map(id => API.deletePatient(id));
+                // Wait for all delete operations to complete
+                await Promise.all(deletePromises);
+
+                // Reset state and refresh the view
+                selectedPatientIds.clear();
+                updateBulkActionUI();
+                await fetchAndDisplayPatients(1); // Go back to the first page
+
+            } catch (error) {
+                console.error('Failed to delete selected patients:', error);
+                alert('An error occurred while deleting patient records.');
+            }
+        }
+    }
+
+    function handleSortOrderToggle() {
+        sortOrder = sortOrder === 'ASC' ? 'DESC' : 'ASC';
+        updateSortUI();
+        fetchAndDisplayPatients(1);
+    }
+
+    function handleSortByChange(e) {
+        e.preventDefault();
+        const target = e.target.closest('.dropdown-item');
+        if (!target) return;
+
+        sortBy = target.dataset.sort;
+        updateSortUI();
+        fetchAndDisplayPatients(1);
+        sortDropdownMenu.classList.add('hidden'); // Hide menu after selection
+    }
+
+    function handleFilterChange(e) {
+        e.preventDefault();
+        const target = e.target.closest('.dropdown-item');
+        if (!target) return;
+
+        filterCategory = target.dataset.value;
+        categoryFilterText.textContent = target.textContent;
+        categoryFilterMenu.classList.add('hidden');
+        fetchAndDisplayPatients(1);
+    }
+
     // --- UI State & Rendering Functions ---
     function toggleEditMode() {
         if (!selectedPatient) return;
@@ -207,13 +350,13 @@ document.addEventListener('DOMContentLoaded', () => {
             saveBtn.classList.remove('hidden');
             deleteBtn.classList.add('hidden');
 
-            // Set the save button text and icon based on the context
+            // This logic correctly sets the text and icon based on context
             if (selectedPatient.id) {
                 saveBtnText.textContent = 'Save Changes';
-                saveIcon.className = 'fa-solid fa-check'; // Check icon
+                saveIcon.className = 'fa-solid fa-check'; // Check icon for saving
             } else {
                 saveBtnText.textContent = 'Create Patient';
-                saveIcon.className = 'fa-solid fa-plus'; // Plus icon
+                saveIcon.className = 'fa-solid fa-plus'; // Plus icon for creating
             }
         } else {
             editBtnText.textContent = 'Edit Data';
@@ -225,32 +368,67 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateBulkActionUI() {
+        const selectedCount = selectedPatientIds.size;
+        if (selectedCount > 0) {
+            deleteSelectedBtn.classList.remove('hidden');
+            deleteSelectedCount.textContent = `Delete Selected (${selectedCount})`;
+        } else {
+            deleteSelectedBtn.classList.add('hidden');
+        }
+    }
+
+    function updateSortUI() {
+        // Update the sort direction icon
+        sortOrderIcon.className = sortOrder === 'ASC' ? 'fa-solid fa-arrow-up-long' : 'fa-solid fa-arrow-down-long';
+
+        // Update the sort by button text
+        const selectedOption = document.querySelector(`.dropdown-item[data-sort="${sortBy}"]`);
+        if (selectedOption) {
+            sortByText.textContent = selectedOption.textContent;
+        }
+    }
+
+    // Don't forget to call this once on startup
+    updateSortUI();
+
     function renderPatientList() {
         mainContent.classList.remove('hidden');
         patientDetailContainer.classList.add('hidden');
         recordCount.textContent = `${totalPatients} Records`;
         patientListContainer.innerHTML = '';
 
-        // Get the pagination container element
         const paginationContainer = document.getElementById('paginationContainer');
-
         if (allPatients.length === 0) {
             patientListContainer.innerHTML = `<p class="text-gray-500 py-8 text-center">No patients found.</p>`;
-            document.getElementById('paginationContainer').innerHTML = '';
             paginationContainer.classList.add('hidden');
             return;
         }
         paginationContainer.classList.remove('hidden');
+
         const table = document.createElement('table');
         table.className = 'min-w-full';
-        table.innerHTML = `<thead><tr><th class="w-12"><input type="checkbox" class="h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
+
+        // The header is now simple and static
+        table.innerHTML = `<thead><tr><th class="w-12 align-middle"><input type="checkbox" id="selectAllCheckbox" class="block h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
+
         const tbody = table.querySelector('tbody');
+
         allPatients.forEach(patient => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><input type="checkbox" class="h-4 w-4 rounded border-gray-300"></td><td>${patient.name || 'N/A'}</td><td>${patient.patient_info?.patient_record_number || 'N/A'}</td><td>${patient.patient_info?.date_of_birth || 'N/A'}</td><td>${patient.patient_info?.category || 'N/A'}</td>`;
-            tr.addEventListener('click', () => selectPatient(patient.id));
+            // Add a class and data-id to the row checkbox
+            tr.innerHTML = `<td><input type="checkbox" class="patient-checkbox h-4 w-4 rounded border-gray-300" data-id="${patient.id}"></td><td>${patient.name || 'N/A'}</td><td>${patient.patient_info?.patient_record_number || 'N/A'}</td><td>${patient.patient_info?.date_of_birth || 'N/A'}</td><td>${patient.patient_info?.category || 'N/A'}</td>`;
+
+            // Add event listener to the row itself for navigation
+            tr.addEventListener('click', (e) => {
+                // Only navigate if the user didn't click the checkbox
+                if (e.target.type !== 'checkbox') {
+                    selectPatient(patient.id);
+                }
+            });
             tbody.appendChild(tr);
         });
+
         patientListContainer.appendChild(table);
         renderPagination();
     }
@@ -304,7 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function selectPatient(id) {
         mainContent.classList.add('hidden');
-        patientDetailContainer.classList.remove('hidden'); // <-- THIS WAS THE BUG. Changed .add() to .remove()
+        patientDetailContainer.classList.remove('hidden');
+        listControls.classList.add('hidden');
 
         if (id) {
             selectedPatient = allPatients.find(p => p.id === id);
@@ -580,6 +759,27 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML = content;
     }
     function setValueByPath(obj, path, value) { const keys = path.split('.'); let current = obj; for (let i = 0; i < keys.length - 1; i++) { const key = keys[i]; if (current[key] === undefined || current[key] === null) { current[key] = !isNaN(keys[i + 1]) ? [] : {}; } current = current[key]; } current[keys[keys.length - 1]] = value; }
+
+    function populateCategoryFilter() {
+        // This uses the "reverted" method of getting categories from the current list.
+        const categories = [...new Set(allPatients
+            .map(p => p.patient_info?.category)
+            .filter(Boolean)
+        )];
+
+        // Clear existing options and add the "All" option first
+        categoryFilterMenu.innerHTML = '<a href="#" class="dropdown-item" data-value="">All Categories</a>';
+
+        // Add an item for each unique category
+        categories.forEach(category => {
+            const item = document.createElement('a');
+            item.href = '#';
+            item.className = 'dropdown-item';
+            item.dataset.value = category;
+            item.textContent = category;
+            categoryFilterMenu.appendChild(item);
+        });
+    }
 
     // Start the application
     fetchAndDisplayPatients(1);

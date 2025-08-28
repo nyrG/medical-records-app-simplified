@@ -71,7 +71,7 @@ export class ExtractionService {
     `;
 
     const model = this.genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.0-flash-lite',
         safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
     });
 
