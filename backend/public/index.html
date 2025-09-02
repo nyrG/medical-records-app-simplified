@@ -7,6 +7,7 @@
     <title>Boveda: Patient Records Module</title>
     <link rel="icon" href="logo.png" type="image/x-icon">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://mozilla.github.io/pdf.js/build/pdf.mjs" type="module"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -95,12 +96,15 @@
                         <span>Back to List</span>
                     </button>
 
+                    <button id="togglePdfBtn" class="btn btn-secondary">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>View PDF</span>
+                    </button>
                     <button id="editBtn" class="btn btn-primary">
                         <i id="editIcon" class="fa-solid fa-pencil"></i>
                         <i id="cancelIcon" class="fa-solid fa-xmark hidden"></i>
                         <span id="editBtnText">Edit Data</span>
                     </button>
-
                     <button id="saveBtn" class="btn btn-success hidden">
                         <i id="saveIcon" class="fa-solid fa-check"></i>
                         <span id="saveBtnText">Save Changes</span>
@@ -111,7 +115,14 @@
                     </button>
                 </div>
             </div>
-            <div id="recordContainer"></div>
+
+            <div id="detailViewWrapper" class="flex gap-6">
+                <div id="recordContainer" class="flex-grow w-full transition-all duration-300">
+                </div>
+                <div id="pdfViewerContainer" class="hidden w-1/2 flex-shrink-0 transition-all duration-300">
+                    <canvas id="pdfCanvas" class="w-full border border-slate-300 rounded-lg shadow-sm"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 

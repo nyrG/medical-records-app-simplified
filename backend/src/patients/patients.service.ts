@@ -32,6 +32,11 @@ export class PatientsService {
     patient.guardian_info = createPatientDto.guardian_info ?? null;
     patient.medical_encounters = createPatientDto.medical_encounters ?? null;
 
+    // --- START: ADDED PDF URL LOGIC ---
+    // Explicitly assign the pdf_url from the DTO to the entity
+    patient.pdf_url = createPatientDto.pdf_url ?? null;
+    // --- END: ADDED PDF URL LOGIC ---
+
     return this.patientsRepository.save(patient);
   }
 

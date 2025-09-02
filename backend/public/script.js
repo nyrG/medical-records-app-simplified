@@ -44,6 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryFilterBtn = document.getElementById('categoryFilterBtn');
     const categoryFilterText = document.getElementById('categoryFilterText');
     const categoryFilterMenu = document.getElementById('categoryFilterMenu');
+    const togglePdfBtn = document.getElementById('togglePdfBtn');
+    const detailViewWrapper = document.getElementById('detailViewWrapper');
+    const pdfViewerContainer = document.getElementById('pdfViewerContainer');
+    const pdfCanvas = document.getElementById('pdfCanvas');
 
     // --- API Functions ---
     const API = {
@@ -130,6 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    togglePdfBtn.addEventListener('click', () => {
+        pdfViewerContainer.classList.toggle('hidden');
+        // Toggle the width of the main record container
+        recordContainer.classList.toggle('w-1/2');
+        recordContainer.classList.toggle('w-full');
+    });
+
 
     // --- Handler Functions ---
     async function handlePdfUpload() {
@@ -162,14 +173,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleSaveChanges() {
         try {
             // --- UPDATE LOGIC ---
-            if (selectedPatient.id) {
+            if (selectedPatient && selectedPatient.id) {
                 const updatedData = {};
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
                     if (input.type === 'number' && value) {
                         value = parseFloat(value);
-                    } else if (value && !value.trim()) { // Handle empty strings
+                    } else if (value && !value.trim()) {
                         value = null;
                     }
                     setValueByPath(updatedData, path, value);
@@ -177,19 +188,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const savedPatient = await API.updatePatient(selectedPatient.id, updatedData);
 
-                // Update the patient in our local array
                 const index = allPatients.findIndex(p => p.id === savedPatient.id);
                 if (index !== -1) {
                     allPatients[index] = savedPatient;
                 }
-
-                // Simply select the patient again to refresh the view correctly.
-                // DO NOT call renderPatientList() here.
                 selectPatient(savedPatient.id);
 
                 // --- CREATE LOGIC ---
             } else {
+                // This is the object from the "Review" screen, which includes the pdf_url
                 const newPatientData = JSON.parse(JSON.stringify(selectedPatient));
+
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
@@ -201,12 +210,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     setValueByPath(newPatientData, path, value);
                 });
 
-                const savedPatient = await API.createPatient(newPatientData);
+                // The server response includes the new `id` and `timestamps`
+                const savedPatientFromServer = await API.createPatient(newPatientData);
 
-                // Add the new patient to our local array and refresh the list
-                allPatients.push(savedPatient);
+                // **THE FIX**: Merge the server response (with the id) into our
+                // complete frontend object (with the pdf_url).
+                const completePatient = { ...newPatientData, ...savedPatientFromServer };
+
+                // Update the local state with the complete patient object
+                allPatients.push(completePatient);
                 renderPatientList();
-                selectPatient(savedPatient.id);
+
+                // Now, select the patient using the complete object
+                selectedPatient = completePatient;
+                selectPatient(completePatient.id);
             }
         } catch (error) {
             console.error('Failed to save patient:', error);
@@ -486,9 +503,29 @@ document.addEventListener('DOMContentLoaded', () => {
         listControls.classList.add('hidden');
 
         if (id) {
+            // This part runs when you select an EXISTING patient from the list
             selectedPatient = allPatients.find(p => p.id === id);
             isEditMode = false;
         }
+        // For a NEW patient (where id is null), the 'selectedPatient' variable
+        // has already been set by the handlePdfUpload function.
+
+        // --- START: CORRECTED PDF LOGIC ---
+        // Reset the layout to the default single-column view first
+        pdfViewerContainer.classList.add('hidden');
+        recordContainer.classList.remove('w-1/2');
+        recordContainer.classList.add('w-full');
+
+        // This check will now run for both new (from PDF upload) and existing patients
+        if (selectedPatient && selectedPatient.pdf_url) {
+            // If the patient has a PDF, display it and show the button
+            displayPdf(selectedPatient.pdf_url);
+            togglePdfBtn.classList.remove('hidden');
+        } else {
+            // Otherwise, hide the toggle button
+            togglePdfBtn.classList.add('hidden');
+        }
+        // --- END: CORRECTED PDF LOGIC ---
 
         renderPatientDetails();
         updateButtonState();
@@ -507,6 +544,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (medical_encounters?.consultations) renderConsultations(medical_encounters.consultations);
         if (medical_encounters?.lab_results) renderLabResults(medical_encounters.lab_results);
         if (medical_encounters?.radiology_reports) renderRadiologyReports(medical_encounters.radiology_reports);
+    }
+
+    async function displayPdf(url) {
+        const { pdfjsLib } = globalThis;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://mozilla.github.io/pdf.js/build/pdf.worker.mjs`;
+
+        try {
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdf = await loadingTask.promise;
+            const page = await pdf.getPage(1); // Load the first page
+
+            const viewport = page.getViewport({ scale: 1.5 });
+            const context = pdfCanvas.getContext('2d');
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.width = viewport.width;
+
+            await page.render({ canvasContext: context, viewport: viewport }).promise;
+            togglePdfBtn.classList.remove('hidden');
+        } catch (error) {
+            console.error('Error rendering PDF:', error);
+            togglePdfBtn.classList.add('hidden'); // Hide button if PDF fails
+        }
     }
 
     // --- Helper Functions ---

@@ -8,7 +8,7 @@ export class Patient {
   id: number;
 
   @Column()
-  name: string; 
+  name: string;
 
   @Column('jsonb')
   patient_info: object;
@@ -26,6 +26,9 @@ export class Patient {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  pdf_url: string | null;
 
   // This will handle soft deletes automatically
   @DeleteDateColumn()

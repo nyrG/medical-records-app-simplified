@@ -17,6 +17,10 @@ import { ExtractionModule } from './extraction/extraction.module';
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
     }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',

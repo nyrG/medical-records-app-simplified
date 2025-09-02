@@ -3,6 +3,9 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, FileDataPart } from '@google/generative-ai';
+import * as fs from 'fs/promises'; // Import the file system module
+import * as path from 'path';     // Import the path module
+import { v4 as uuidv4 } from 'uuid'; // To generate unique filenames
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
@@ -23,13 +26,13 @@ export class ExtractionService {
   // --- Date Formatting and Cleaning (No changes needed) ---
   private formatDate(dateString: string | null): string | null {
     if (!dateString || typeof dateString !== 'string') return null;
-    const formatsToTry = [ 'DD MMM YYYY', 'MMMM DD, YYYY', 'YYYY-MM-DD', 'M/D/YYYY', 'MM/DD/YYYY', 'MM/DD/YY', 'D-MMM-YY', 'DD-MMM-YY' ];
+    const formatsToTry = ['DD MMM YYYY', 'MMMM DD, YYYY', 'YYYY-MM-DD', 'M/D/YYYY', 'MM/DD/YYYY', 'MM/DD/YY', 'D-MMM-YY', 'DD-MMM-YY'];
     for (const fmt of formatsToTry) {
       const d = dayjs(dateString.trim(), fmt, 'en', true);
       if (d.isValid()) {
         let year = d.year();
         if (fmt.toLowerCase().includes('yy') && !fmt.toLowerCase().includes('yyyy')) {
-            year = year > dayjs().year() % 100 ? 1900 + year : 2000 + year;
+          year = year > dayjs().year() % 100 ? 1900 + year : 2000 + year;
         }
         return d.year(year).format('YYYY-MM-DD');
       }
@@ -52,12 +55,25 @@ export class ExtractionService {
     return data;
   }
   private sanitizeJsonString(str: string): string {
-    return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g,"");
+    return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g, "");
   }
-  
+
   async extractDataFromPdf(file: Express.Multer.File): Promise<any> {
+    const uniqueFilename = `${uuidv4()}.pdf`;
+    const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
+    const filePath = path.join(uploadsDir, uniqueFilename);
+    const pdfUrl = `/uploads/${uniqueFilename}`;
+
+    try {
+      await fs.mkdir(uploadsDir, { recursive: true });
+      await fs.writeFile(filePath, file.buffer);
+    } catch (error) {
+      console.error('Error saving PDF file:', error);
+      throw new InternalServerErrorException('Could not save PDF file.');
+    }
+
     const schema = { "patient_info": { "patient_record_number": null, "full_name": { "first_name": null, "middle_initial": null, "last_name": null }, "date_of_birth": null, "sex": null, "address": null, "category": null }, "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "last_name": null }, "afpsn": null, "branch_of_service": null, "unit_assignment": null }, "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] } };
-    
+
     const prompt = `
       You are an expert AI medical data processor. Your task is to analyze the provided medical PDF document and convert its content into a single, comprehensive JSON object. The document contains both typed and handwritten text; you must interpret both.
       **CRITICAL INSTRUCTIONS:**
@@ -71,22 +87,22 @@ export class ExtractionService {
     `;
 
     const model = this.genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash-lite',
-        safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
+      model: 'gemini-2.0-flash-lite',
+      safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
     });
 
     // --- **CORRECTED** File Data Object ---
     // This creates the correct object structure for an "InlineDataPart"
     const fileDataPart = {
-        inlineData: {
-            data: file.buffer.toString("base64"),
-            mimeType: file.mimetype,
-        },
+      inlineData: {
+        data: file.buffer.toString("base64"),
+        mimeType: file.mimetype,
+      },
     };
 
     // The prompt and the file data part are sent as separate elements in the array
     const result = await model.generateContent([prompt, fileDataPart]);
-    
+
     const responseText = result.response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
 
@@ -94,11 +110,12 @@ export class ExtractionService {
       console.error('No valid JSON object found in Gemini response:', responseText);
       throw new Error('Could not find a valid JSON object in the extracted data.');
     }
-    
+
     const sanitizedJson = this.sanitizeJsonString(jsonMatch[0]);
-    
+
     try {
       const parsedData = JSON.parse(sanitizedJson);
+      parsedData.pdf_url = pdfUrl;
       return this.cleanData(parsedData);
     } catch (error) {
       console.error('Failed to parse JSON from Gemini:', error, 'Raw Text:', sanitizedJson);
