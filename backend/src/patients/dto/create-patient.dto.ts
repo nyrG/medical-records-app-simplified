@@ -1,9 +1,5 @@
 // backend/src/patients/dto/create-patient.dto.ts
-import { IsObject, IsOptional, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-
-// You might need to define the nested object structures for better validation,
-// but for now, we'll keep them as generic objects.
+import { IsObject, IsOptional } from 'class-validator';
 
 export class CreatePatientDto {
   @IsObject()
@@ -16,4 +12,8 @@ export class CreatePatientDto {
   @IsObject()
   @IsOptional()
   medical_encounters?: object;
+
+  @IsObject()
+  @IsOptional()
+  summary?: object;
 }

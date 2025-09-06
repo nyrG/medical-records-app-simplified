@@ -44,6 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryFilterBtn = document.getElementById('categoryFilterBtn');
     const categoryFilterText = document.getElementById('categoryFilterText');
     const categoryFilterMenu = document.getElementById('categoryFilterMenu');
+    const dashboardContainer = document.getElementById('dashboardContainer');
+    const dashboardTabs = document.getElementById('dashboardTabs');
+    const dashboardStatsContainer = document.getElementById('dashboardStatsContainer');
 
     // --- API Functions ---
     const API = {
@@ -69,20 +72,56 @@ document.addEventListener('DOMContentLoaded', () => {
             return r.json();
         },
         async deletePatient(id) { const r = await fetch(`/api/patients/${id}`, { method: 'DELETE' }); if (!r.ok) throw new Error('Failed to delete patient'); },
-        async processPdf(formData) { const r = await fetch('/api/extraction/upload', { method: 'POST', body: formData }); if (!r.ok) { const e = await r.json(); throw new Error(e.message || 'Failed to process PDF'); } return r.json(); }
+        async processPdf(formData) { const r = await fetch('/api/extraction/upload', { method: 'POST', body: formData }); if (!r.ok) { const e = await r.json(); throw new Error(e.message || 'Failed to process PDF'); } return r.json(); },
+        async getStats() { const r = await fetch('/api/patients/stats'); if (!r.ok) throw new Error('Failed to fetch stats'); return r.json(); }
     };
 
     // --- Initialization & Data Fetching ---
     async function fetchAndDisplayPatients(page = 1) {
-        listControls.classList.remove('hidden'); // <-- Add this line to show controls
+        history.pushState({ view: 'list', page: page }, '');
+
+        mainContent.classList.remove('hidden');
+        patientDetailContainer.classList.add('hidden');
+        listControls.classList.remove('hidden');
+
+        dashboardStatsContainer.classList.remove('hidden');
         try {
             const { data, total } = await API.getPatients(page, rowsPerPage);
             allPatients = data; totalPatients = total; currentPage = page;
             renderPatientList();
             populateCategoryFilter();
+            fetchAndRenderDashboardStats(); // Refresh stats with the list
         } catch (error) {
             console.error("Error fetching patients:", error);
             patientListContainer.innerHTML = `<p class="text-red-500 text-center py-8">Error loading patient data.</p>`;
+        }
+    }
+
+    async function fetchAndRenderDashboardStats() {
+        try {
+            const stats = await API.getStats();
+
+            // Populate Overview Panel
+            const overviewContainer = document.getElementById('overviewStats');
+            overviewContainer.innerHTML = `
+            <div><p class="text-sm text-slate-500">Total Patients</p><p class="text-2xl font-bold">${stats.totalPatients}</p></div>
+            <div><p class="text-sm text-slate-500">Updated Today</p><p class="text-2xl font-bold">${stats.recentlyUpdated}</p></div>
+            <div><p class="text-sm text-slate-500">Average Age</p><p class="text-2xl font-bold">${stats.averageAge}</p></div>
+            `;
+
+            // Populate Diagnoses Panel
+            const diagnosesList = document.getElementById('topDiagnosesList');
+            diagnosesList.innerHTML = stats.topDiagnoses.map(d =>
+                `<li class="flex justify-between items-center"><span class="font-medium">${d.diagnosis}</span><span class="text-sm text-slate-500">${d.count} cases</span></li>`
+            ).join('') || '<li>No diagnosis data available.</li>';
+
+            const categoriesList = document.getElementById('categoriesList');
+            categoriesList.innerHTML = stats.categories.map(c =>
+                `<li class="flex justify-between items-center"><span class="font-medium">${c.category || 'Uncategorized'}</span><span class="text-sm text-slate-500">${c.count} cases</span></li>`
+            ).join('') || '<li>No category data available.</li>';
+
+        } catch (error) {
+            console.error("Could not fetch dashboard stats:", error);
         }
     }
 
@@ -127,6 +166,38 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add this new condition to hide the category menu as well
         if (!categoryFilterBtn.contains(e.target)) {
             categoryFilterMenu.classList.add('hidden');
+        }
+    });
+    dashboardTabs.addEventListener('click', (e) => {
+        if (e.target.matches('.dashboard-tab')) {
+            // Remove active class from all tabs
+            dashboardTabs.querySelectorAll('.dashboard-tab').forEach(tab => tab.classList.remove('active'));
+            // Add active class to clicked tab
+            e.target.classList.add('active');
+
+            // Hide all panels
+            document.querySelectorAll('.dashboard-panel').forEach(panel => panel.classList.add('hidden'));
+
+            // Show the correct panel
+            const tabId = e.target.dataset.tab;
+            document.getElementById(`${tabId}Panel`).classList.remove('hidden');
+        }
+    });
+    window.addEventListener('popstate', (event) => {
+        if (event.state) {
+            if (event.state.view === 'list') {
+                // If the state is for the list view, show it
+                fetchAndDisplayPatients(event.state.page || 1);
+            } else if (event.state.view === 'detail') {
+                // If the state is for a detail view, find and show the patient
+                // This requires the patient to be in the `allPatients` array
+                if (allPatients.some(p => p.id === event.state.patientId)) {
+                    selectPatient(event.state.patientId);
+                } else {
+                    // Fallback if the patient isn't in the current list
+                    fetchAndDisplayPatients(1);
+                }
+            }
         }
     });
 
@@ -409,16 +480,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const table = document.createElement('table');
         table.className = 'min-w-full';
 
-        // The header is now simple and static
-        table.innerHTML = `<thead><tr><th class="w-12 align-middle"><input type="checkbox" id="selectAllCheckbox" class="block h-4 w-4 rounded border-gray-300"></th><th>Patient Name</th><th>Record #</th><th>Date of Birth</th><th>Category</th></tr></thead><tbody class="bg-white"></tbody>`;
+        table.innerHTML = `
+        <thead>
+            <tr>
+                <th class="w-12 align-middle"><input type="checkbox" id="selectAllCheckbox" class="block h-4 w-4 rounded border-gray-300"></th>
+                <th>Patient Name</th>
+                <th>Record #</th>
+                <th>Final Diagnosis</th>
+                <th>Category</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white"></tbody>`;
 
         const tbody = table.querySelector('tbody');
 
         allPatients.forEach(patient => {
             const tr = document.createElement('tr');
             // Add a class and data-id to the row checkbox
-            tr.innerHTML = `<td><input type="checkbox" class="patient-checkbox h-4 w-4 rounded border-gray-300" data-id="${patient.id}"></td><td>${patient.name || 'N/A'}</td><td>${patient.patient_info?.patient_record_number || 'N/A'}</td><td>${patient.patient_info?.date_of_birth || 'N/A'}</td><td>${patient.patient_info?.category || 'N/A'}</td>`;
-
+            tr.innerHTML = `
+            <td><input type="checkbox" class="patient-checkbox h-4 w-4 rounded border-gray-300" data-id="${patient.id}"></td>
+            <td>${patient.name || 'N/A'}</td>
+            <td>${patient.patient_info?.patient_record_number || 'N/A'}</td>
+            <td class="truncate-cell">${patient.summary?.final_diagnosis || 'N/A'}</td>
+            <td>${patient.patient_info?.category || 'N/A'}</td>`;
             // Add event listener to the row itself for navigation
             tr.addEventListener('click', (e) => {
                 // Only navigate if the user didn't click the checkbox
@@ -481,9 +565,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.changePage = (page) => { if (page > 0 && page <= Math.ceil(totalPatients / rowsPerPage)) fetchAndDisplayPatients(page); };
 
     function selectPatient(id) {
+        if (id) {
+            history.pushState({ view: 'detail', patientId: id }, '');
+        }
+
         mainContent.classList.add('hidden');
         patientDetailContainer.classList.remove('hidden');
         listControls.classList.add('hidden');
+
+        dashboardStatsContainer.classList.add('hidden');
 
         if (id) {
             selectedPatient = allPatients.find(p => p.id === id);
@@ -499,9 +589,13 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAndDisplayPatients(currentPage); // Go back to list if no patient is selected
             return;
         }
-        const { patient_info, guardian_info, medical_encounters } = selectedPatient;
+        const { patient_info, guardian_info, medical_encounters, summary } = selectedPatient;
         currentPatientName.textContent = `Viewing: ${selectedPatient.name || 'New Patient'}`;
+
+        renderDashboard(summary);
+
         recordContainer.innerHTML = `<section id="patientInfo" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></section><section id="medicalEncounters"><h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-6">Medical Encounters</h2><div id="consultations" class="mb-8"></div><div id="labResults" class="mb-8"></div><div id="radiologyReports"></div></section>`;
+
         if (patient_info) renderPatientInfo(patient_info, 'patient_info');
         if (guardian_info) renderGuardianInfo(guardian_info, 'guardian_info');
         if (medical_encounters?.consultations) renderConsultations(medical_encounters.consultations);
@@ -509,9 +603,69 @@ document.addEventListener('DOMContentLoaded', () => {
         if (medical_encounters?.radiology_reports) renderRadiologyReports(medical_encounters.radiology_reports);
     }
 
+    function renderDashboard(summary) {
+        dashboardContainer.innerHTML = '';
+        if (!summary) return;
+
+        // A helper function to create either a view or an edit card
+        const createCard = (icon, title, content, path) => {
+            let bodyContent;
+
+            if (isEditMode) {
+                // In Edit Mode, use the existing createEditItem helper
+                // We use a simplified version for the dashboard cards
+                const isTextArea = ['key_findings', 'primary_complaint'].includes(path.split('.')[1]);
+                if (isTextArea) {
+                    bodyContent = `<textarea data-path="${path}" class="edit-textarea !min-h-[60px]">${Array.isArray(content) ? content.join(', ') : (content || '')}</textarea>`;
+                } else {
+                    bodyContent = `<input type="text" data-path="${path}" value="${Array.isArray(content) ? content.join(', ') : (content || '')}" class="edit-input">`;
+                }
+            } else {
+                // In View Mode, display the content as before
+                if (!content || (Array.isArray(content) && content.length === 0)) {
+                    bodyContent = '<p class="text-slate-400">N/A</p>';
+                } else if (Array.isArray(content)) {
+                    bodyContent = `<ul>${content.map(item => `<li>${item}</li>`).join('')}</ul>`;
+                } else {
+                    bodyContent = `<p>${content}</p>`;
+                }
+            }
+
+            return `
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <i class="fa-solid ${icon} text-slate-500"></i>
+                    <span>${title}</span>
+                </div>
+                <div class="dashboard-card-body">${bodyContent}</div>
+            </div>
+        `;
+        };
+
+        dashboardContainer.innerHTML += createCard('fa-flag-checkered', 'Final Diagnosis', summary.final_diagnosis, 'summary.final_diagnosis');
+        dashboardContainer.innerHTML += createCard('fa-user-doctor', 'Primary Complaint', summary.primary_complaint, 'summary.primary_complaint');
+        dashboardContainer.innerHTML += createCard('fa-magnifying-glass-plus', 'Key Findings', summary.key_findings, 'summary.key_findings');
+        dashboardContainer.innerHTML += createCard('fa-pills', 'Current Medications', summary.current_medications, 'summary.current_medications');
+        dashboardContainer.innerHTML += createCard('fa-allergies', 'Allergies', summary.allergies, 'summary.allergies');
+    }
+
     // --- Helper Functions ---
     function createInfoItem(label, value) { return value ? `<div class="py-2"><dt class="font-medium text-gray-500">${label}</dt><dd class="text-gray-900">${value}</dd></div>` : '' }
-    function createEditItem(label, value, path) { const isTextArea = ['notes', 'findings', 'treatment plan', 'impression'].includes(label.toLowerCase()); const inputType = (label.toLowerCase().includes('date')) ? 'date' : 'text'; if (isTextArea) return `<div class="py-2"><label class="font-medium text-gray-500">${label}</label><textarea data-path="${path}" class="edit-textarea">${value || ''}</textarea></div>`; return `<div class="py-2 grid grid-cols-1 sm:grid-cols-3 items-center"><label class="font-medium text-gray-500 sm:col-span-1">${label}</label><input type="${inputType}" data-path="${path}" value="${value || ''}" class="edit-input sm:col-span-2"></div>`; }
+    function createEditItem(label, value, path) {
+        const isTextArea = ['notes', 'findings', 'treatment plan', 'impression'].includes(label.toLowerCase());
+        // --- START: MODIFIED INPUT TYPE LOGIC ---
+        let inputType = 'text';
+        if (label.toLowerCase().includes('date')) {
+            inputType = 'date';
+        } else if (label.toLowerCase() === 'age') {
+            inputType = 'number';
+        }
+        // --- END: MODIFIED INPUT TYPE LOGIC ---
+
+        if (isTextArea) return `<div class="py-2"><label class="font-medium text-gray-500">${label}</label><textarea data-path="${path}" class="edit-textarea">${value || ''}</textarea></div>`;
+
+        return `<div class="py-2 grid grid-cols-1 sm:grid-cols-3 items-center"><label class="font-medium text-gray-500 sm:col-span-1">${label}</label><input type="${inputType}" data-path="${path}" value="${value || ''}" class="edit-input sm:col-span-2"></div>`;
+    }
     function renderPatientInfo(info, basePath) {
         const container = document.getElementById('patientInfo');
         const fullName = [info.full_name?.first_name, info.full_name?.middle_initial, info.full_name?.last_name].filter(Boolean).join(' ');
@@ -521,39 +675,41 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isEditMode) {
             // --- EDIT MODE ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-user-circle text-slate-500"></i>
-                Patient Demographics
-            </div>
-            <div class="detail-card-body">
-                ${createEditItem('First Name', info.full_name?.first_name, `${basePath}.full_name.first_name`)}
-                ${createEditItem('Middle Initial', info.full_name?.middle_initial, `${basePath}.full_name.middle_initial`)}
-                ${createEditItem('Last Name', info.full_name?.last_name, `${basePath}.full_name.last_name`)}
-                ${createEditItem('Record #', info.patient_record_number, `${basePath}.patient_record_number`)}
-                ${createEditItem('Date of Birth', info.date_of_birth, `${basePath}.date_of_birth`)}
-                ${createEditItem('Category', info.category, `${basePath}.category`)}
-                ${createEditItem('Address', info.address, `${basePath}.address`)}
-            </div>
-        </div>`;
+            <div class="detail-card">
+                <div class="detail-card-header">
+                    <i class="fa-solid fa-user-circle text-slate-500"></i>
+                    Patient Demographics
+                </div>
+                <div class="detail-card-body">
+                    ${createEditItem('First Name', info.full_name?.first_name, `${basePath}.full_name.first_name`)}
+                    ${createEditItem('Middle Initial', info.full_name?.middle_initial, `${basePath}.full_name.middle_initial`)}
+                    ${createEditItem('Last Name', info.full_name?.last_name, `${basePath}.full_name.last_name`)}
+                    ${createEditItem('Record #', info.patient_record_number, `${basePath}.patient_record_number`)}
+                    ${createEditItem('Date of Birth', info.date_of_birth, `${basePath}.date_of_birth`)}
+                    ${createEditItem('Age', info.age, `${basePath}.age`)} 
+                    ${createEditItem('Category', info.category, `${basePath}.category`)}
+                    ${createEditItem('Address', info.address, `${basePath}.address`)}
+                </div>
+            </div>`;
         } else {
             // --- VIEW MODE (No changes needed here) ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-user-circle text-slate-500"></i>
-                Patient Demographics
-            </div>
-            <div class="detail-card-body">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                    <div><strong>Name:</strong> ${fullName}</div>
-                    <div><strong>Record #:</strong> ${info.patient_record_number || 'N/A'}</div>
-                    <div><strong>Date of Birth:</strong> ${info.date_of_birth || 'N/A'}</div>
-                    <div><strong>Category:</strong> ${info.category || 'N/A'}</div>
-                    <div class="md:col-span-2"><strong>Address:</strong> ${info.address || 'N/A'}</div>
+            <div class="detail-card">
+                <div class="detail-card-header">
+                    <i class="fa-solid fa-user-circle text-slate-500"></i>
+                    Patient Demographics
                 </div>
-            </div>
-        </div>`;
+                <div class="detail-card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                        <div><strong>Name:</strong> ${fullName}</div>
+                        <div><strong>Record #:</strong> ${info.patient_record_number || 'N/A'}</div>
+                        <div><strong>Date of Birth:</strong> ${info.date_of_birth || 'N/A'}</div>
+                        <div><strong>Age:</strong> ${info.age || 'N/A'}</div>
+                        <div><strong>Category:</strong> ${info.category || 'N/A'}</div>
+                        <div class="md:col-span-2"><strong>Address:</strong> ${info.address || 'N/A'}</div>
+                    </div>
+                </div>
+            </div>`;
         }
         container.innerHTML += content;
     }
@@ -783,4 +939,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Start the application
     fetchAndDisplayPatients(1);
+    fetchAndRenderDashboardStats();
 });

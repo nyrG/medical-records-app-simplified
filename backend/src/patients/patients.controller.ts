@@ -14,6 +14,11 @@ export class PatientsController {
     return this.patientsService.create(createPatientDto);
   }
 
+  @Get('stats')
+  getStats() {
+    return this.patientsService.getStats();
+  }
+
   @Get()
   findAll(
     @Query('page', new ParseIntPipe({ optional: true })) page: number = 1,
@@ -25,7 +30,8 @@ export class PatientsController {
   ) {
     return this.patientsService.findAll(page, limit, search, sortBy, sortOrder, category);
   }
-
+  
+  // The parameterized route ':id' now comes AFTER the specific 'stats' route.
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.patientsService.findOne(id);
