@@ -19,8 +19,8 @@ import { ExtractionModule } from './extraction/extraction.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5432,
+      host: process.env.NODE_ENV === 'production' ? 'postgres' : 'localhost',
+      port: process.env.NODE_ENV === 'production' ? 5432 : 5312,
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
