@@ -1,3 +1,5 @@
+// backend/src/database/seeds/seed.ts
+
 import { DataSource } from 'typeorm';
 import { faker } from '@faker-js/faker';
 import { Patient } from '../../patients/entities/patient.entity';
@@ -5,6 +7,18 @@ import { AppDataSource } from '../data-source';
 
 const seedPatients = async (dataSource: DataSource) => {
     const patientRepository = dataSource.getRepository(Patient);
+
+    // --- START: CORRECTED DATA CLEARING ---
+    console.log('🗑️  Deleting all existing patient records...');
+    await patientRepository.clear(); // Use .clear() instead of .delete({})
+    console.log('✅  All records deleted.');
+    // --- END: CORRECTED DATA CLEARING ---
+
+    const diagnoses = ["Acute Bronchitis", "Type 2 Diabetes", "Hypertension", "Gastroenteritis", "Migraine", "Allergic Rhinitis"];
+    const complaints = ["Persistent cough and chest congestion.", "Increased thirst and frequent urination.", "High blood pressure readings at home.", "Nausea, vomiting, and diarrhea.", "Severe recurring headaches.", "Nasal congestion and sneezing."];
+    const findings = ["Lungs clear, no signs of pneumonia.", "Elevated HbA1c levels.", "BP consistently above 140/90 mmHg.", "Dehydration and abdominal tenderness.", "Normal neurological exam.", "Inflamed nasal passages."];
+    const medications = [["Albuterol Inhaler", "Guaifenesin"], ["Metformin", "Glipizide"], ["Lisinopril", "Amlodipine"], ["Ondansetron"], ["Sumatriptan"], ["Loratadine", "Fluticasone Spray"]];
+    const allergies = [["None"], ["Penicillin"], ["Sulfa drugs"], ["None"], ["Aspirin"], ["Pollen", "Dust Mites"]];
 
     console.log('🌱 Seeding 20 dummy patient records...');
 
@@ -14,7 +28,6 @@ const seedPatients = async (dataSource: DataSource) => {
         const patient = new Patient();
 
         patient.name = `${firstName} ${lastName}`;
-        // REMOVED: patient.status = PatientStatus.ACTIVE;
 
         patient.patient_info = {
             full_name: {
@@ -24,7 +37,7 @@ const seedPatients = async (dataSource: DataSource) => {
             },
             date_of_birth: faker.date.birthdate({ min: 18, max: 65, mode: 'age' }).toISOString().split('T')[0],
             patient_record_number: faker.string.numeric(6),
-            category: 'Dummy Data', // As requested
+            category: 'Dummy Data',
             address: `${faker.location.streetAddress()}, ${faker.location.city()}`,
         };
 
@@ -44,7 +57,17 @@ const seedPatients = async (dataSource: DataSource) => {
                 chief_complaint: faker.lorem.sentence(),
                 diagnosis: faker.lorem.words(3),
                 attending_physician: `Dr. ${faker.person.lastName()}`,
+                treatment_plan: `Prescribed ${faker.commerce.productName()}`
             }],
+        };
+        
+        const randomIndex = faker.number.int({ min: 0, max: diagnoses.length - 1 });
+        patient.summary = {
+            final_diagnosis: faker.helpers.arrayElement(diagnoses),
+            primary_complaint: faker.helpers.arrayElement(complaints),
+            key_findings: faker.helpers.arrayElement(findings),
+            current_medications: faker.helpers.arrayElement(medications),
+            allergies: faker.helpers.arrayElement(allergies)
         };
         
         await patientRepository.save(patient);

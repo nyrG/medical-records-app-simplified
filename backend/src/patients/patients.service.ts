@@ -2,7 +2,7 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, MoreThan } from 'typeorm';
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -31,6 +31,7 @@ export class PatientsService {
     // Explicitly set to null if undefined to match the entity and database
     patient.guardian_info = createPatientDto.guardian_info ?? null;
     patient.medical_encounters = createPatientDto.medical_encounters ?? null;
+    patient.summary = createPatientDto.summary ?? null;
 
     return this.patientsRepository.save(patient);
   }
@@ -53,7 +54,7 @@ export class PatientsService {
     const allowedSortBy = [
       'name',
       'patient_info.patient_record_number',
-      'patient_info.date_of_birth',
+      'summary.final_diagnosis',
       'patient_info.category',
       'created_at',
       'updated_at'
@@ -90,6 +91,40 @@ export class PatientsService {
       throw new NotFoundException(`Patient with ID ${id} not found`);
     }
     return patient;
+  }
+
+  async getStats() {
+    const totalPatients = await this.patientsRepository.count();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentlyUpdated = await this.patientsRepository.count({
+      where: { updated_at: MoreThan(oneDayAgo) },
+    });
+
+    const categories = await this.patientsRepository
+      .createQueryBuilder('patient')
+      .select("patient.patient_info ->> 'category'", 'category')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy("patient.patient_info ->> 'category'")
+      .orderBy('count', 'DESC')
+      .getRawMany();
+
+    const topDiagnoses = await this.patientsRepository
+      .createQueryBuilder('patient')
+      .select("patient.summary ->> 'final_diagnosis'", 'diagnosis')
+      .addSelect('COUNT(*)', 'count')
+      .where("patient.summary ->> 'final_diagnosis' IS NOT NULL")
+      .groupBy("patient.summary ->> 'final_diagnosis'")
+      .orderBy('count', 'DESC')
+      .limit(5)
+      .getRawMany();
+
+    const avgAgeResult = await this.patientsRepository.query(
+      `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient`
+    );
+    const averageAge = avgAgeResult[0]?.avgAge ? parseFloat(avgAgeResult[0].avgAge).toFixed(1) : 'N/A';
+
+    return { totalPatients, recentlyUpdated, categories, topDiagnoses, averageAge };
   }
 
   async update(id: number, updatePatientDto: UpdatePatientDto): Promise<Patient> {
