@@ -109,15 +109,14 @@ export class PatientsService {
       .orderBy('count', 'DESC')
       .getRawMany();
 
-    const topDiagnoses = await this.patientsRepository
-      .createQueryBuilder('patient')
-      .select("patient.summary ->> 'final_diagnosis'", 'diagnosis')
-      .addSelect('COUNT(*)', 'count')
-      .where("patient.summary ->> 'final_diagnosis' IS NOT NULL")
-      .groupBy("patient.summary ->> 'final_diagnosis'")
-      .orderBy('count', 'DESC')
-      .limit(5)
-      .getRawMany();
+    const topDiagnoses = await this.patientsRepository.query(`
+        SELECT diagnosis, COUNT(diagnosis) as count
+        FROM patient, jsonb_array_elements_text(summary->'final_diagnosis') AS diagnosis
+        WHERE jsonb_typeof(summary->'final_diagnosis') = 'array'
+        GROUP BY diagnosis
+        ORDER BY count DESC
+        LIMIT 5;
+    `);
 
     const avgAgeResult = await this.patientsRepository.query(
       `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient`

@@ -37,6 +37,7 @@ export class ExtractionService {
     console.warn(`Warning: Could not parse date '${dateString}'. Returning null.`);
     return null;
   }
+
   private cleanData(data: any): any {
     if (typeof data === 'string') return data.trim();
     if (Array.isArray(data)) return data.map(item => this.cleanData(item));
@@ -48,40 +49,95 @@ export class ExtractionService {
           data[key] = this.cleanData(data[key]);
         }
       }
+
+      if (data.full_name && data.full_name.middle_initial) {
+        let mi = data.full_name.middle_initial.trim().charAt(0).toUpperCase();
+        if (mi) {
+          mi += '.';
+        }
+        data.full_name.middle_initial = mi;
+      }
     }
     return data;
   }
+
   private sanitizeJsonString(str: string): string {
     return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g, "");
   }
 
   async extractDataFromPdf(file: Express.Multer.File): Promise<any> {
     const schema = {
-      "patient_info": { "patient_record_number": null, "full_name": { "first_name": null, "middle_initial": null, "last_name": null }, "date_of_birth": null, "sex": null, "address": null, "category": null }, "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "last_name": null }, "afpsn": null, "branch_of_service": null, "unit_assignment": null }, "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
+      "patient_info": { "patient_record_number": null, "full_name": { "first_name": null, "middle_initial": null, "last_name": null }, "date_of_birth": null, "age": null, "sex": null, "address": null, "category": null },
+      "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "last_name": null }, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
+      "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
       "summary": {
-        "final_diagnosis": null,
+        "final_diagnosis": [],
         "primary_complaint": null,
         "key_findings": null,
-        "current_medications": [],
+        "medications_taken": [],
         "allergies": []
       }
     };
 
-     const prompt = `
-      You are an expert AI medical data processor. Your task is to analyze the provided medical PDF document and convert its content into a single, comprehensive JSON object. The document contains both typed and handwritten text; you must interpret both.
+    const diagnosisList = [
+      // Cardiovascular
+      "Hypertension", "Coronary Artery Disease", "Atrial Fibrillation", "Heart Failure", "Hyperlipidemia",
+      // Endocrine
+      "Type 2 Diabetes", "Type 1 Diabetes", "Hypothyroidism", "Hyperthyroidism", "Polycystic Ovary Syndrome (PCOS)",
+      // Respiratory
+      "Asthma", "COPD (Chronic Obstructive Pulmonary Disease)", "Pneumonia", "Acute Bronchitis", "Allergic Rhinitis", "Sleep Apnea",
+      // Gastrointestinal
+      "Gastroesophageal Reflux Disease (GERD)", "Gastroenteritis", "Irritable Bowel Syndrome (IBS)", "Peptic Ulcer Disease",
+      // Neurological
+      "Migraine", "Tension Headache", "Epilepsy", "Cerebrovascular Accident (Stroke)", "Dementia",
+      // Musculoskeletal
+      "Osteoarthritis", "Rheumatoid Arthritis", "Low Back Pain", "Fibromyalgia", "Gout",
+      // Genitourinary / Women's Health
+      "Urinary Tract Infection (UTI)", "Benign Prostatic Hyperplasia (BPH)", "Abnormal Uterine Bleeding (AUB-O)", "Endometriosis",
+      // Mental Health
+      "Depression", "Anxiety Disorder", "Bipolar Disorder", "ADHD (Attention-Deficit/Hyperactivity Disorder)",
+      // Other Common Conditions
+      "Anemia", "Obesity", "Osteoporosis", "Chronic Kidney Disease", "Dermatitis"
+    ];
 
-      **CRITICAL INSTRUCTIONS:**
-      1.  **Adhere to the Schema**: The output MUST strictly follow the JSON schema. If a field is not present, its value MUST be null.
-      2.  **Generate Dashboard Summary**: Based on the entire document, populate the "summary" object:
-          - "final_diagnosis": The definitive diagnosis.
-          - "primary_complaint": The most recent or significant chief complaint.
-          - "key_findings": A one-sentence summary of the most critical radiology or lab report impression.
-          - "current_medications": A list of medications from the most recent treatment plan.
-          - "allergies": A list of all known allergies mentioned.
-      3.  **Format All Dates**: All dates MUST be in "YYYY-MM-DD" format.
-      4.  **Handle Nested Arrays**: For lab results, parse each row into an object in the "results" array.
-      5.  **No Extra Text**: Your final output must only be the raw JSON object.
+    const categoryList = [
+      "EDM", "EDS", "EDD", "EDF", "EDW", "ODW", "ODM", "ODF", "ODS", "ODD",
+      "ACTIVE MILITARY", "RMP", "CAA", "CHR", "CIVILIAN", "CDT", "CS", "P2LT",
+      "OCS", "RES", "ODH", "EDH"
+    ];
 
+    const prompt = `
+      You are an expert AI medical data processor. Analyze the provided PDF, including all handwritten text, and convert it into a single, comprehensive JSON object.
+
+      **PRIMARY RULES:**
+      1.  **Strict Schema Adherence**: Your output MUST be ONLY the raw JSON object, strictly following the provided schema. If a value is not found or is illegible, it must be null.
+      2.  **Data Quality and Coherence**: All extracted text must be proofread to correct OCR errors, ensure it is coherent, and written in English.
+      3.  **Handle Document Layout**: Pay close attention to the document's layout. Often, the value for a field is written on the line ABOVE its corresponding label (e.g., the name "MEDINA" appears above the label "LAST NAME").
+      4.  **No Extra Text**: Your final output must only be the raw JSON object.
+      
+      **FIELD-SPECIFIC INSTRUCTIONS:**
+      - **summary.final_diagnosis**: First, try to match the condition to one or more items from the provided Diagnosis List. If no match is found, formulate a concise diagnosis based on the document's findings as a last resort. Return as a JSON array.
+      - **summary.medications_taken**: Extract a list of medications from the most recent 'Treatment Plan'. Each item must be a string including the name, dosage, and frequency.
+      - **patient_info.category**: You MUST select the most fitting category from the provided Category List.
+      - **patient_info.full_name.first_name**: This field can contain multiple words (e.g., "AMGGYMEL VHANESA"). You must extract all parts of the first name into the single "first_name" property.
+      - **dates**: All dates must be in "YYYY-MM-DD" format (e.g., "13-Oct-91" becomes "1991-10-13").
+      - **Laboratory Results**: Extract each individual test from a lab report table. For each test, you must separate the numerical result from its unit. For example, for "75.20 µmol/L", the "value" should be "75.20" and the "unit" should be "µmol/L".
+      
+      **CONSULTATION FIELD DEFINITIONS:**
+      - **chief_complaint**: The patient's primary reason for the visit, in their own words or as recorded by the physician.
+      - **diagnosis**: The physician's assessment or diagnosis for that specific encounter.
+      - **notes**: The detailed narrative of the patient's history for the current illness (History of Present Illness or HPI), physical exam findings, and other relevant details from the consultation.
+      - **treatment_plan**: The specific actions, prescriptions, or advice given to the patient during that consultation.
+
+      **REFERENCE LISTS:**
+      - **Diagnosis List**: ${diagnosisList.join(', ')}
+      - **Category List**: ${categoryList.join(', ')}
+
+      **DATA QUALITY INSTRUCTIONS:**
+      - **Decipher Handwriting**: Make your best effort to accurately interpret handwritten notes.
+      - **Proofread All Consultation Fields**: For all free-text fields within the "consultations" object (like 'chief_complaint', 'diagnosis', 'notes', and 'treatment_plan'), you must first extract the raw text, then proofread and rewrite it into a coherent, clinical narrative. Correct all spelling and grammar mistakes from the OCR process.
+      - **Ensure Coherence**: Proofread the extracted data to be legible and coherent. All output must be in English. If a value is illegible, set it to null.
+      
       **JSON SCHEMA TO FOLLOW:**
       ${JSON.stringify(schema, null, 2)}
     `;
@@ -91,8 +147,6 @@ export class ExtractionService {
       safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
     });
 
-    // --- **CORRECTED** File Data Object ---
-    // This creates the correct object structure for an "InlineDataPart"
     const fileDataPart = {
       inlineData: {
         data: file.buffer.toString("base64"),
@@ -100,9 +154,7 @@ export class ExtractionService {
       },
     };
 
-    // The prompt and the file data part are sent as separate elements in the array
     const result = await model.generateContent([prompt, fileDataPart]);
-
     const responseText = result.response.text();
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
 
