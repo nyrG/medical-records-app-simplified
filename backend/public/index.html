@@ -19,14 +19,14 @@
     <div class="main-container p-4 sm:p-6 lg:p-8">
         <header class="flex flex-col gap-4 mb-4">
             <div class="flex items-center justify-between w-full">
-                <div class="flex items-center gap-4">
+                <a href="#" id="homeLink" class="flex items-center gap-4 group">
                     <img src="logo.png" alt="Boveda Logo" class="h-8 w-8">
-                    <h1 class="text-2xl font-bold text-slate-900">Patient Records</h1>
-                    <p id="recordCount" class="record-count-badge">0 Records</p>
-                </div>
+                    <h1 class="text-2xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">Patient
+                        Records</h1>
+                </a>
 
-                <div class="flex items-center gap-2">
-                    <button id="deleteSelectedBtn" class="btn btn-danger hidden">
+                <div class="flex items-center gap-2 ml-auto"> <button id="deleteSelectedBtn"
+                        class="btn btn-danger hidden">
                         <i class="fa-solid fa-trash-can"></i>
                         <span id="deleteSelectedCount">Delete Selected</span>
                     </button>
@@ -66,9 +66,12 @@
         </div>
 
         <div id="listControls" class="flex items-center justify-between w-full mb-4">
-            <div class="relative">
-                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="searchInput" placeholder="Search by name..." class="search-input">
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="searchInput" placeholder="Search by name..." class="search-input">
+                </div>
+                <p id="recordCount" class="record-count-badge">0 Records</p>
             </div>
 
             <div class="flex items-center justify-end gap-2">
@@ -138,6 +141,7 @@
                     </button>
                 </div>
             </div>
+            <div id="patientDetailContent"></div>
             <section id="dashboardContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
             </section>
             <div id="recordContainer"></div>

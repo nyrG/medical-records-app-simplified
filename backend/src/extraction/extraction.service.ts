@@ -50,16 +50,34 @@ export class ExtractionService {
         }
       }
 
-      if (data.full_name && data.full_name.middle_initial) {
-        let mi = data.full_name.middle_initial.trim().charAt(0).toUpperCase();
-        if (mi) {
-          mi += '.';
+      const formatMiddleInitial = (fullNameObject) => {
+        if (fullNameObject && fullNameObject.middle_initial) {
+          fullNameObject.middle_initial = fullNameObject.middle_initial.trim().charAt(0).toUpperCase();
         }
-        data.full_name.middle_initial = mi;
-      }
+      };
+
+      formatMiddleInitial(data.patient_info?.full_name);
+      formatMiddleInitial(data.guardian_info?.guardian_name);
+
+      const standardizeSex = (infoObject) => {
+        if (infoObject && typeof infoObject.sex === 'string') {
+          const sex = infoObject.sex.toLowerCase().trim();
+          if (sex.startsWith('m')) {
+            infoObject.sex = 'M';
+          } else if (sex.startsWith('f')) {
+            infoObject.sex = 'F';
+          } else {
+            infoObject.sex = null;
+          }
+        }
+      };
+
+      standardizeSex(data.patient_info);
+      standardizeSex(data.guardian_info);
     }
     return data;
   }
+
 
   private sanitizeJsonString(str: string): string {
     return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g, "");
@@ -68,7 +86,7 @@ export class ExtractionService {
   async extractDataFromPdf(file: Express.Multer.File): Promise<any> {
     const schema = {
       "patient_info": { "patient_record_number": null, "full_name": { "first_name": null, "middle_initial": null, "last_name": null }, "date_of_birth": null, "age": null, "sex": null, "address": null, "category": null },
-      "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "last_name": null }, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
+      "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "middle_initial": null, "last_name": null }, "sex": null, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
       "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
       "summary": {
         "final_diagnosis": [],
@@ -116,10 +134,11 @@ export class ExtractionService {
       4.  **No Extra Text**: Your final output must only be the raw JSON object.
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
+      - **sex (for both patient and guardian)**: If sex is not explicitly written, infer it from the person's first name. Standardize the output to "M" for male, "F" for female, or null if it cannot be determined.
       - **summary.final_diagnosis**: First, try to match the condition to one or more items from the provided Diagnosis List. If no match is found, formulate a concise diagnosis based on the document's findings as a last resort. Return as a JSON array.
       - **summary.medications_taken**: Extract a list of medications from the most recent 'Treatment Plan'. Each item must be a string including the name, dosage, and frequency.
       - **patient_info.category**: You MUST select the most fitting category from the provided Category List.
-      - **patient_info.full_name.first_name**: This field can contain multiple words (e.g., "AMGGYMEL VHANESA"). You must extract all parts of the first name into the single "first_name" property.
+      - **full_name properties (for both patient and guardian)**: These fields can contain multiple words (e.g., "AMGGYMEL VHANESA" or "JOSE RIZAL"). You must extract all parts of the first name into the single "first_name" property.
       - **dates**: All dates must be in "YYYY-MM-DD" format (e.g., "13-Oct-91" becomes "1991-10-13").
       - **Laboratory Results**: Extract each individual test from a lab report table. For each test, you must separate the numerical result from its unit. For example, for "75.20 µmol/L", the "value" should be "75.20" and the "unit" should be "µmol/L".
       
