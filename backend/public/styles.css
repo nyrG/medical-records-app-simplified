@@ -1,5 +1,6 @@
 /* backend/public/styles.css */
 
+/* --- 1. Root Variables & Global Styles --- */
 :root {
     --color-primary: #3b82f6;
     --color-primary-hover: #2563eb;
@@ -20,9 +21,19 @@
     --border-color: #e2e8f0;
 }
 
+html,
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-main);
+    height: 100%;
+    overflow: hidden;
+}
+
+/* --- 2. Layout Containers --- */
+#app-container {
+    height: 100vh;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
 .main-container {
@@ -35,14 +46,7 @@ body {
     border: 1px solid var(--border-color);
 }
 
-.header-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-/* --- Reusable Button Component Styles --- */
+/* --- 3. Reusable Components: Buttons, Badges, Inputs --- */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -53,12 +57,8 @@ body {
     border: 1px solid transparent;
     cursor: pointer;
     font-size: 0.875rem;
-    /* START: Added Transitions */
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    /* END: Added Transitions */
 }
 
 .btn:hover {
@@ -112,7 +112,46 @@ body {
     background-color: var(--color-warning-hover);
 }
 
-/* --- Table Styling --- */
+.record-count-badge {
+    background-color: #e2e8f0;
+    /* bg-slate-200 */
+    color: #475569;
+    /* text-slate-600 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+.search-input {
+    padding: 0.4rem 0.9rem 0.4rem 2.25rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+    width: 250px;
+    transition: all 0.2s ease-in-out;
+    font-size: 0.875rem;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.edit-input,
+.edit-textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.edit-textarea {
+    min-height: 80px;
+}
+
+/* --- 4. Patient List & Table Styles --- */
 #patientListContainer table {
     border-collapse: collapse;
 }
@@ -138,13 +177,11 @@ body {
 #patientListContainer tbody tr {
     cursor: pointer;
     transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    /* Added box-shadow transition */
 }
 
 #patientListContainer tbody tr:hover {
     background-color: var(--color-secondary-hover-bg);
     box-shadow: inset 3px 0 0 0 var(--color-primary);
-    /* Adds a subtle left border highlight */
 }
 
 #patientListContainer tbody tr:last-child td {
@@ -156,7 +193,14 @@ body {
     color: var(--text-heading);
 }
 
-/* --- Pagination, Search & Filter Controls --- */
+.truncate-cell {
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- 5. Pagination, Filters & Dropdowns --- */
 #paginationContainer {
     padding: 0.75rem;
 }
@@ -204,22 +248,6 @@ body {
     background-color: white;
 }
 
-.search-input {
-    padding: 0.4rem 0.9rem 0.4rem 2.25rem;
-    border-radius: 0.375rem;
-    border: 1px solid var(--border-color);
-    width: 250px;
-    transition: all 0.2s ease-in-out;
-    font-size: 0.875rem;
-}
-
-.search-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-/* --- Dropdown Menu Animations --- */
 .dropdown-menu {
     position: absolute;
     top: 100%;
@@ -248,20 +276,26 @@ body {
     background-color: var(--color-secondary-hover-bg);
 }
 
-/* --- Detail View & Card Styling --- */
+/* --- 6. Dashboard & Detail View --- */
+.dashboard-card,
 .detail-card {
-    margin-bottom: 1rem;
     background-color: white;
     border-radius: 0.5rem;
     border: 1px solid var(--border-color);
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.detail-card {
+    margin-bottom: 1rem;
     opacity: 0;
     transform: translateY(10px);
     animation: fadeInSlideUp 0.4s ease-out forwards;
 }
 
+.dashboard-card-header,
 .detail-card-header {
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
+    /* MODIFIED: Was #f8fafc (slate-100 instead of slate-50) */
     padding: 0.75rem 1.25rem;
     border-bottom: 1px solid var(--border-color);
     font-size: 1rem;
@@ -272,55 +306,22 @@ body {
     gap: 0.75rem;
 }
 
-.detail-card-body {
-    padding: 1.25rem;
-}
-
-.record-count-badge {
-    background-color: #d2e2fb;
-    color: #3e58b4;
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-}
-
-.edit-input,
-.edit-textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--border-color);
-    border-radius: 0.375rem;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
-
-.edit-textarea {
-    min-height: 80px;
-}
-
-.dashboard-card {
-    background-color: white;
-    border-radius: 0.5rem;
-    border: 1px solid var(--border-color);
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-}
-
 .dashboard-card-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-heading);
+    padding: 1rem;
+    border-bottom: none;
     margin-bottom: 0.5rem;
 }
 
-.dashboard-card-body {
+.dashboard-card-body,
+.detail-card-body {
+    padding: 1.25rem;
     font-size: 0.875rem;
     color: var(--text-body);
+}
+
+.dashboard-card-body {
+    padding: 1rem;
 }
 
 .dashboard-card-body ul {
@@ -337,49 +338,44 @@ body {
     border-color: transparent;
     font-weight: 500;
     color: #64748b;
-    /* text-slate-500 */
     transition: all 0.2s ease-in-out;
 }
 
 .dashboard-tab:hover {
     color: #334155;
-    /* text-slate-700 */
     border-color: #cbd5e1;
-    /* border-slate-300 */
 }
 
 .dashboard-tab.active {
     color: #2563eb;
-    /* text-blue-600 */
     border-color: #3b82f6;
-    /* border-blue-500 */
 }
 
 .dashboard-panel.hidden {
     display: none;
 }
 
-.truncate-cell {
-    max-width: 250px;
-    /* Adjust this width as needed */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* --- 7. Custom Scrollbar --- */
+#app-container::-webkit-scrollbar {
+    width: 10px;
 }
 
-.record-count-badge {
-    background-color: #e2e8f0;
-    /* bg-slate-200 */
-    color: #475569;
-    /* text-slate-600 */
-    font-size: 0.875rem;
-    font-weight: 500;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.375rem;
-    /* MODIFIED: Was 9999px */
+#app-container::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-/* --- Animation Keyframes --- */
+#app-container::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 6px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+}
+
+#app-container::-webkit-scrollbar-thumb:hover {
+    background-color: #94a3b8;
+}
+
+/* --- 8. Animation Keyframes --- */
 @keyframes fadeInSlideUp {
     to {
         opacity: 1;
@@ -397,4 +393,56 @@ body {
         opacity: 1;
         transform: scale(1);
     }
+}
+
+/* --- 9. Quick Links & FAB --- */
+.quick-link-chip {
+    display: inline-block;
+    background-color: #e2e8f0;
+    /* slate-200 */
+    color: #475569;
+    /* slate-600 */
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    transition: all 0.2s ease-in-out;
+}
+
+.quick-link-chip:hover {
+    background-color: var(--color-primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.scroll-to-top-fab {
+    position: sticky;
+    /* Sticks relative to the scrollable container */
+    bottom: 1.5rem;
+    right: 1.5rem;
+    margin-left: auto;
+    /* Pushes the button to the right */
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.scroll-to-top-fab:hover {
+    background-color: var(--color-primary-hover);
+    transform: scale(1.1);
+}
+
+.quick-access-chevron {
+    transition: transform 0.2s ease-in-out;
+}
+
+.quick-access-chevron.rotate-180 {
+    transform: rotate(180deg);
 }

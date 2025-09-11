@@ -38,7 +38,15 @@ const seedPatients = async (dataSource: DataSource) => {
             date_of_birth: faker.date.birthdate({ min: 18, max: 65, mode: 'age' }).toISOString().split('T')[0],
             patient_record_number: faker.string.numeric(6),
             category: 'Dummy Data',
-            address: `${faker.location.streetAddress()}, ${faker.location.city()}`,
+            // START: MODIFIED ADDRESS
+            address: {
+                house_no_street: faker.location.streetAddress(),
+                barangay: 'Guadalupe', // Example Barangay
+                city_municipality: faker.location.city(),
+                province: faker.location.state(),
+                zip_code: faker.location.zipCode(),
+            },
+            // END: MODIFIED ADDRESS
         };
 
         patient.guardian_info = {

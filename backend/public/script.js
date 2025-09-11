@@ -257,6 +257,41 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // --- Handle Quick Access Toggles ---
+        const quickAccessToggle = e.target.closest('button[id^="quickAccessToggle"]');
+        if (quickAccessToggle) {
+            const wrapper = quickAccessToggle.nextElementSibling; // The content div is the next sibling
+            const chevron = quickAccessToggle.querySelector('.quick-access-chevron');
+            if (wrapper) {
+                wrapper.classList.toggle('hidden');
+                chevron.classList.toggle('rotate-180');
+            }
+        }
+
+        // --- Handle Scrolling Logic ---
+        const quickLink = e.target.closest('a.quick-link-chip');
+        if (quickLink) {
+            e.preventDefault();
+            const targetId = quickLink.getAttribute('href');
+            const targetElement = document.querySelector(targetId);
+            const scrollContainer = targetElement.closest('.tab-panel').parentElement;
+
+            if (targetElement && scrollContainer) {
+                const topPos = targetElement.offsetTop - scrollContainer.offsetTop;
+                scrollContainer.scrollTo({ top: topPos, behavior: 'smooth' });
+            }
+        }
+
+        const scrollTopBtn = e.target.closest('.scroll-to-top-fab');
+        if (scrollTopBtn) {
+            const panelId = scrollTopBtn.dataset.targetPanel;
+            const scrollContainer = document.getElementById(panelId)?.parentElement;
+            if (scrollContainer) {
+                scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+        // END: New Scroll Logic
+
         // --- Handle Clear Guardian Button ---
         if (isEditMode && e.target.closest('#clearGuardianBtn')) {
             const guardianPanel = document.getElementById('guardianPanel');
@@ -722,7 +757,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${createEditItem('Date of Birth', patient_info.date_of_birth, 'patient_info.date_of_birth')}
                         ${createEditItem('Category', patient_info.category, 'patient_info.category')}
                         ${sexEditHTML}
-                        ${createEditItem('Address', patient_info.address, 'patient_info.address')}
+                        <div class="py-2 space-y-2">
+                            <label class="font-medium text-sm text-gray-600">Address</label>
+                            ${createEditItem('House No./Street', patient_info.address?.house_no_street, 'patient_info.address.house_no_street')}
+                            ${createEditItem('Barangay', patient_info.address?.barangay, 'patient_info.address.barangay')}
+                            ${createEditItem('City/Municipality', patient_info.address?.city_municipality, 'patient_info.address.city_municipality')}
+                            ${createEditItem('Province', patient_info.address?.province, 'patient_info.address.province')}
+                            ${createEditItem('ZIP Code', patient_info.address?.zip_code, 'patient_info.address.zip_code')}
+                        </div>
                     </div>
                 </div>`;
             keyInfoHTML = `
@@ -751,6 +793,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const patientMI = patient_info.full_name?.middle_initial ? `${patient_info.full_name.middle_initial}.` : '';
             const fullName = [patient_info.full_name?.first_name, patientMI, patient_info.full_name?.last_name].filter(Boolean).join(' ');
 
+            const address = patient_info.address;
+            const fullAddress = address ? [address.house_no_street, address.barangay, address.city_municipality, address.province, address.zip_code].filter(Boolean).join(', ') : 'N/A';
+
             demographicsHTML = `
                 <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
                     <div class="p-5 border-b border-slate-200">
@@ -759,22 +804,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="p-5">
                         <dl class="space-y-4">
-                            <div>
-                                <dt class="text-sm text-slate-500">Date of Birth</dt>
-                                <dd class="font-medium text-slate-800">${dobDisplay}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm text-slate-500">Category</dt>
-                                <dd class="font-medium text-slate-800">${patient_info.category || 'N/A'}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm text-slate-500">Sex</dt>
-                                <dd class="font-medium text-slate-800">${sexDisplay}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm text-slate-500">Address</dt>
-                                <dd class="font-medium text-slate-800">${patient_info.address || 'N/A'}</dd>
-                            </div>
+                            <div><dt class="text-sm text-slate-500">Date of Birth</dt><dd class="font-medium text-slate-800">${dobDisplay}</dd></div>
+                            <div><dt class="text-sm text-slate-500">Category</dt><dd class="font-medium text-slate-800">${patient_info.category || 'N/A'}</dd></div>
+                            <div><dt class="text-sm text-slate-500">Sex</dt><dd class="font-medium text-slate-800">${sexDisplay}</dd></div>
+                            <div><dt class="text-sm text-slate-500">Address</dt><dd class="font-medium text-slate-800">${fullAddress}</dd></div>
                         </dl>
                     </div>
                 </div>`;
@@ -937,7 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <button data-tab="guardian" class="dashboard-tab">Guardian</button>
                                         </nav>
                                     </div>
-                                    <div class="p-4 md:p-6 max-h-[calc(100vh-20rem)] overflow-y-auto">
+                                    <div class="p-4 md:p-6 max-h-[calc(100vh-18rem)] overflow-y-auto">
                                         <div id="summaryPanel" class="tab-panel">${summaryHTML}</div>
                                         <div id="consultationsPanel" class="tab-panel hidden"></div>
                                         <div id="labsPanel" class="tab-panel hidden"></div>
@@ -987,22 +1020,53 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('consultationsPanel');
         if (!container) return;
 
+        let header = `<div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-stethoscope text-slate-500"></i>Consultations
+                        </h3>`;
+        if (isEditMode) {
+            header += `<button id="addConsultationBtn" class="btn btn-secondary !py-1 !px-3 text-sm">
+                           <i class="fa-solid fa-plus"></i> Add
+                       </button>`;
+        }
+        header += `</div>`;
+
         if (consultations && consultations.length > 0) {
-            let header = `<div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <i class="fa-solid fa-stethoscope text-slate-500"></i>Consultations
-                            </h3>`;
-            if (isEditMode) {
-                header += `<button id="addConsultationBtn" class="btn btn-secondary !py-1 !px-3 text-sm">
-                               <i class="fa-solid fa-plus"></i> Add
-                           </button>`;
-            }
-            header += `</div>`;
+            const quickLinks = consultations.map((item, index) =>
+                `<a href="#consultation-${index}" class="quick-link-chip">${item.consultation_date || `Entry ${index + 1}`}</a>`
+            ).join('');
+
+            const quickLinksContainer = `
+                <div class="detail-card mb-4">
+                    <button id="quickAccessToggle" class="detail-card-header w-full flex justify-between items-center cursor-pointer">
+                        <span class="font-semibold text-base flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-slate-500"></i>
+                            <span>Quick Access</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down quick-access-chevron text-sm"></i>
+                    </button>
+                    <div id="quickLinksWrapper" class="p-4 flex flex-wrap gap-2">
+                        ${quickLinks}
+                    </div>
+                </div>`;
+
+            const fabHTML = `<button id="consultationScrollTopBtn" class="scroll-to-top-fab" title="Back to top">
+                                <i class="fa-solid fa-arrow-up"></i>
+                             </button>`;
 
             let content = `<div class="space-y-4">`;
             consultations.forEach((item, index) => {
                 const basePath = `medical_encounters.consultations.${index}`;
-                content += `<div class="detail-card">
+                const createViewItem = (icon, label, value) => `
+                    <div>
+                        <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                            <i class="fa-solid ${icon} w-4 text-center"></i>
+                            <span>${label}</span>
+                        </div>
+                        <p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p>
+                    </div>`;
+
+                content += `<div class="detail-card" id="consultation-${index}">
                                 <div class="detail-card-header flex justify-between items-center">
                                     <span>
                                         <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
@@ -1015,38 +1079,65 @@ document.addEventListener('DOMContentLoaded', () => {
                         : item.age_at_visit ? `<span class="text-sm bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: ${item.age_at_visit}</span>` : ''
                     }
                                 </div>
-                                <div class="detail-card-body">
-                                    ${isEditMode ?
-                        `${createEditItem("Chief Complaint", item.chief_complaint, `${basePath}.chief_complaint`)}
-                                         ${createEditItem("Diagnosis", item.diagnosis, `${basePath}.diagnosis`)}
-                                         ${createEditItem("Notes", item.notes, `${basePath}.notes`)}
-                                         ${createEditItem("Treatment Plan", item.treatment_plan, `${basePath}.treatment_plan`)}
-                                         ${createEditItem("Attending Physician", item.attending_physician, `${basePath}.attending_physician`)}` :
-                        `<div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
-                                            ${((label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '')('Chief Complaint', item.chief_complaint)}
-                                            ${((label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '')('Diagnosis / Assessment', item.diagnosis)}
-                                            ${((label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '')('Notes / HPI', item.notes)}
-                                            ${((label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '')('Treatment Plan', item.treatment_plan)}
-                                            ${((label, value) => value ? `<div><strong class="text-slate-600">${label}:</strong><p class="whitespace-pre-wrap">${value}</p></div>` : '')('Attending Physician', item.attending_physician)}
-                                        </div>`
-                    }
-                                </div>
-                            </div>`;
+                                <div class="detail-card-body">`;
+                if (isEditMode) {
+                    content += `<div class="space-y-6">
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Vitals</h4>
+                                        <div class="grid grid-cols-3 gap-4 pt-2">
+                                            ${createEditItem('Height (cm)', item.vitals?.height_cm, `${basePath}.vitals.height_cm`)}
+                                            ${createEditItem('Weight (kg)', item.vitals?.weight_kg, `${basePath}.vitals.weight_kg`)}
+                                            ${createEditItem('Temp (°C)', item.vitals?.temperature_c, `${basePath}.vitals.temperature_c`)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Encounter Details</h4>
+                                        <div class="space-y-2 pt-2">
+                                            ${createEditItem("Chief Complaint", item.chief_complaint, `${basePath}.chief_complaint`)}
+                                            ${createEditItem("Notes / HPI", item.notes, `${basePath}.notes`)}
+                                            ${createEditItem("Diagnosis", item.diagnosis, `${basePath}.diagnosis`)}
+                                            ${createEditItem("Treatment Plan", item.treatment_plan, `${basePath}.treatment_plan`)}
+                                            ${createEditItem("Attending Physician", item.attending_physician, `${basePath}.attending_physician`)}
+                                        </div>
+                                    </div>
+                                </div>`;
+                } else {
+                    const createVitalsItem = (icon, label, value, unit) => `
+                        <div>
+                            <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                                <i class="fa-solid ${icon} w-4 text-center"></i>
+                                <span>${label}</span>
+                            </div>
+                            <p class="text-slate-700 mt-1 ml-6">${value || 'N/A'} ${unit}</p>
+                        </div>`;
+
+                    content += `<div class="space-y-6">
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-800 mb-3">Vitals</h4>
+                                        <div class="grid grid-cols-3 gap-4">
+                                            ${createVitalsItem('fa-ruler-vertical', 'Height', item.vitals?.height_cm, 'cm')}
+                                            ${createVitalsItem('fa-weight-scale', 'Weight', item.vitals?.weight_kg, 'kg')}
+                                            ${createVitalsItem('fa-temperature-half', 'Temp', item.vitals?.temperature_c, '°C')}
+                                        </div>
+                                    </div>
+                                    <div class="border-t border-slate-200"></div>
+                                    <div>
+                                        <h4 class="text-base font-bold text-slate-800 mb-4">Encounter Details</h4>
+                                        <div class="space-y-4">
+                                            ${createViewItem('fa-comment-dots', 'Chief Complaint', item.chief_complaint)}
+                                            ${createViewItem('fa-file-lines', 'Notes / HPI', item.notes)}
+                                            ${createViewItem('fa-stethoscope', 'Diagnosis / Assessment', item.diagnosis)}
+                                            ${createViewItem('fa-prescription-bottle-medical', 'Treatment Plan', item.treatment_plan)}
+                                            ${createViewItem('fa-user-doctor', 'Attending Physician', item.attending_physician)}
+                                        </div>
+                                    </div>
+                                </div>`;
+                }
+                content += `</div></div>`;
             });
             content += `</div>`;
-            container.innerHTML = header + content;
+            container.innerHTML = header + quickLinksContainer + content + fabHTML;
         } else {
-            let header = `<div class="flex justify-between items-center mb-4">
-                            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <i class="fa-solid fa-stethoscope text-slate-500"></i>Consultations
-                            </h3>`;
-            if (isEditMode) {
-                header += `<button id="addConsultationBtn" class="btn btn-secondary !py-1 !px-3 text-sm">
-                               <i class="fa-solid fa-plus"></i> Add
-                           </button>`;
-            }
-            header += `</div>`;
-
             container.innerHTML = header + `
                 <div class="text-center py-12 text-slate-400">
                     <i class="fa-solid fa-file-circle-xmark fa-3x mb-3"></i>
@@ -1071,11 +1162,33 @@ document.addEventListener('DOMContentLoaded', () => {
         header += `</div>`;
 
         if (labs && labs.length > 0) {
-            let content = `<div class="space-y-6">`;
+            const quickLinks = labs.map((lab, index) =>
+                `<a href="#lab-${index}" class="quick-link-chip">${lab.test_type || lab.date_performed || `Entry ${index + 1}`}</a>`
+            ).join('');
+
+            const quickLinksContainer = `
+                <div class="detail-card mb-4">
+                    <button id="quickAccessToggleLabs" class="detail-card-header w-full flex justify-between items-center cursor-pointer">
+                        <span class="font-semibold text-base flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-slate-500"></i>
+                            <span>Quick Access</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down quick-access-chevron text-sm"></i>
+                    </button>
+                    <div id="quickLinksWrapperLabs" class="p-4 flex flex-wrap gap-2">
+                        ${quickLinks}
+                    </div>
+                </div>`;
+
+            const fabHTML = `<button class="scroll-to-top-fab" data-target-panel="labsPanel" title="Back to top">
+                                <i class="fa-solid fa-arrow-up"></i>
+                             </button>`;
+
+            let content = `<div class="space-y-4">`;
             labs.forEach((lab, index) => {
                 const basePath = `medical_encounters.lab_results.${index}`;
-                content += `<div class="detail-card">
-                                <div class="detail-card-header flex justify-between items-center">
+                content += `<div class="detail-card" id="lab-${index}">
+                                <div class="detail-card-header flex justify-between items-center" style="background-color: #f1f5f9;">
                                     <span>
                                         <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
                                         <strong>Date:</strong> ${isEditMode ? `<input type="date" data-path="${basePath}.date_performed" value="${lab.date_performed || ''}" class="edit-input w-40 ml-2">` : (lab.date_performed || 'N/A')}
@@ -1121,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>`;
             });
             content += `</div>`;
-            container.innerHTML = header + content;
+            container.innerHTML = header + quickLinksContainer + content + fabHTML;
         } else {
             container.innerHTML = header + `
                 <div class="text-center py-12 text-slate-400">
@@ -1148,11 +1261,33 @@ document.addEventListener('DOMContentLoaded', () => {
         header += `</div>`;
 
         if (reports && reports.length > 0) {
+            const quickLinks = reports.map((report, index) =>
+                `<a href="#radiology-${index}" class="quick-link-chip">${report.examination || report.date_performed || `Entry ${index + 1}`}</a>`
+            ).join('');
+
+            const quickLinksContainer = `
+                <div class="detail-card mb-4">
+                    <button id="quickAccessToggleRadiology" class="detail-card-header w-full flex justify-between items-center cursor-pointer">
+                        <span class="font-semibold text-base flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass text-slate-500"></i>
+                            <span>Quick Access</span>
+                        </span>
+                        <i class="fa-solid fa-chevron-down quick-access-chevron text-sm"></i>
+                    </button>
+                    <div id="quickLinksWrapperRadiology" class="p-4 flex flex-wrap gap-2">
+                        ${quickLinks}
+                    </div>
+                </div>`;
+
+            const fabHTML = `<button class="scroll-to-top-fab" data-target-panel="radiologyPanel" title="Back to top">
+                                <i class="fa-solid fa-arrow-up"></i>
+                             </button>`;
+
             let content = `<div class="space-y-4">`;
             reports.forEach((report, index) => {
                 const basePath = `medical_encounters.radiology_reports.${index}`;
-                content += `<div class="detail-card">
-                                <div class="detail-card-header flex justify-between items-center">
+                content += `<div class="detail-card" id="radiology-${index}">
+                                <div class="detail-card-header flex justify-between items-center" style="background-color: #f1f5f9;">
                                     <span>
                                         <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
                                         <strong>Date:</strong> ${isEditMode ? `<input type="date" data-path="${basePath}.date_performed" value="${report.date_performed || ''}" class="edit-input w-40 ml-2">` : (report.date_performed || 'N/A')}
@@ -1182,13 +1317,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>`;
             });
             content += `</div>`;
-            container.innerHTML = header + content;
+            container.innerHTML = header + quickLinksContainer + content + fabHTML;
         } else {
             container.innerHTML = header + `
                 <div class="text-center py-12 text-slate-400">
                     <i class="fa-solid fa-radiation fa-3x mb-3"></i>
                     <p class="font-medium">No Radiology Reports</p>
-                    <p class="text-sm">There are no radiology reports on file for this patient.</p>
+                    <p class="text-sm">There is no radiology reports on file for this patient.</p>
                 </div>`;
         }
     }

@@ -85,9 +85,23 @@ export class ExtractionService {
 
   async extractDataFromPdf(file: Express.Multer.File): Promise<any> {
     const schema = {
-      "patient_info": { "patient_record_number": null, "full_name": { "first_name": null, "middle_initial": null, "last_name": null }, "date_of_birth": null, "age": null, "sex": null, "address": null, "category": null },
+      "patient_info": {
+        "patient_record_number": null,
+        "full_name": { "first_name": null, "middle_initial": null, "last_name": null },
+        "date_of_birth": null,
+        "age": null,
+        "sex": null,
+        "address": {
+            "house_no_street": null,
+            "barangay": null,
+            "city_municipality": null,
+            "province": null,
+            "zip_code": null
+        },
+        "category": null
+      },
       "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "middle_initial": null, "last_name": null }, "sex": null, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
-      "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
+      "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "height_cm": null, "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
       "summary": {
         "final_diagnosis": [],
         "primary_complaint": null,
@@ -134,6 +148,7 @@ export class ExtractionService {
       4.  **No Extra Text**: Your final output must only be the raw JSON object.
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
+      - **address**: Deconstruct the address into its specific components: house_no_street, barangay, city_municipality, province, and zip_code.
       - **sex (for both patient and guardian)**: If sex is not explicitly written, infer it from the person's first name. Standardize the output to "M" for male, "F" for female, or null if it cannot be determined.
       - **summary.final_diagnosis**: First, try to match the condition to one or more items from the provided Diagnosis List. If no match is found, formulate a concise diagnosis based on the document's findings as a last resort. Return as a JSON array.
       - **summary.medications_taken**: Extract a list of medications from the most recent 'Treatment Plan'. Each item must be a string including the name, dosage, and frequency.

@@ -5,6 +5,13 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 type PatientInfo = {
   date_of_birth?: string;
   age?: number | null;
+  address?: {
+    house_no_street?: string;
+    barangay?: string;
+    city_municipality?: string;
+    province?: string;
+    zip_code?: string;
+  } | null;
   [key: string]: any;
 };
 
