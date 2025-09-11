@@ -238,9 +238,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
+
+                    const arrayFields = [
+                        'summary.final_diagnosis',
+                        'summary.medications_taken',
+                        'summary.allergies'
+                    ];
+
+                    if (arrayFields.includes(path)) {
+                        value = value.split(',').map(item => item.trim()).filter(Boolean);
+                    }
+
                     if (input.type === 'number' && value) {
                         value = parseFloat(value);
-                    } else if (value && !value.trim()) { // Handle empty strings
+                    } else if (typeof value === 'string' && !value.trim()) { // Check if it's a string before trimming
                         value = null;
                     }
                     setValueByPath(updatedData, path, value);
@@ -253,9 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (index !== -1) {
                     allPatients[index] = savedPatient;
                 }
-
-                // Simply select the patient again to refresh the view correctly.
-                // DO NOT call renderPatientList() here.
                 selectPatient(savedPatient.id);
 
                 // --- CREATE LOGIC ---
@@ -264,17 +272,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
+
+                    const arrayFields = [
+                        'summary.final_diagnosis',
+                        'summary.medications_taken',
+                        'summary.allergies'
+                    ];
+
+                    if (arrayFields.includes(path)) {
+                        value = value.split(',').map(item => item.trim()).filter(Boolean);
+                    }
+
                     if (input.type === 'number' && value) {
                         value = parseFloat(value);
-                    } else if (value && !value.trim()) {
+                    } else if (typeof value === 'string' && !value.trim()) { // Check if it's a string before trimming
                         value = null;
                     }
                     setValueByPath(newPatientData, path, value);
                 });
 
                 const savedPatient = await API.createPatient(newPatientData);
-
-                // Add the new patient to our local array and refresh the list
                 allPatients.push(savedPatient);
                 renderPatientList();
                 selectPatient(savedPatient.id);
@@ -294,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Error: ${detailedError}`);
         }
     }
+
     async function handleDeletePatient() {
         if (!selectedPatient?.id || !confirm(`Are you sure you want to delete patient ${selectedPatient.name}? This cannot be undone.`)) {
             return;
@@ -601,7 +619,6 @@ document.addEventListener('DOMContentLoaded', () => {
         recordContainer.innerHTML = `<section id="patientInfo" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></section><section id="medicalEncounters"><h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-6">Medical Encounters</h2><div id="consultations" class="mb-8"></div><div id="labResults" class="mb-8"></div><div id="radiologyReports"></div></section>`;
 
         if (patient_info) renderPatientInfo(patient_info, 'patient_info');
-        if (guardian_info) renderGuardianInfo(guardian_info, 'guardian_info');
         if (medical_encounters?.consultations) renderConsultations(medical_encounters.consultations);
         if (medical_encounters?.lab_results) renderLabResults(medical_encounters.lab_results);
         if (medical_encounters?.radiology_reports) renderRadiologyReports(medical_encounters.radiology_reports);
@@ -731,46 +748,56 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML += content;
     }
     function renderGuardianInfo(info, basePath) {
+        // First, exit if there is no guardian info object at all.
+        if (!info) {
+            return;
+        }
+
         const container = document.getElementById('patientInfo');
-        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.middle_initial, info.guardian_name?.last_name].filter(Boolean).join(' ');
+        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.middle_initial, info.guardian_name?.last_name].filter(Boolean).join(' ').trim();
+
+        // If after assembling the name, it's still an empty string, do not render the card.
+        if (!guardianName) {
+            return;
+        }
 
         let content = '';
 
         if (isEditMode) {
             // --- EDIT MODE ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-shield-halved text-slate-500"></i>
-                Guardian Information
-            </div>
-            <div class="detail-card-body">
-                ${createEditItem('Rank', info.guardian_name?.rank, `${basePath}.guardian_name.rank`)}
-                ${createEditItem('First Name', info.guardian_name?.first_name, `${basePath}.guardian_name.first_name`)}
-                ${createEditItem('Middle Initial', info.guardian_name?.middle_initial, `${basePath}.guardian_name.middle_initial`)}
-                ${createEditItem('Last Name', info.guardian_name?.last_name, `${basePath}.guardian_name.last_name`)}
-                ${createEditItem('AFPSN', info.afpsn, `${basePath}.afpsn`)}
-                ${createEditItem('Branch of Service', info.branch_of_service, `${basePath}.branch_of_service`)}
-                ${createEditItem('Unit Assignment', info.unit_assignment, `${basePath}.unit_assignment`)}
-            </div>
-        </div>`;
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <i class="fa-solid fa-shield-halved text-slate-500"></i>
+            Guardian Information
+        </div>
+        <div class="detail-card-body">
+            ${createEditItem('Rank', info.guardian_name?.rank, `${basePath}.guardian_name.rank`)}
+            ${createEditItem('First Name', info.guardian_name?.first_name, `${basePath}.guardian_name.first_name`)}
+            ${createEditItem('Middle Initial', info.guardian_name?.middle_initial, `${basePath}.guardian_name.middle_initial`)}
+            ${createEditItem('Last Name', info.guardian_name?.last_name, `${basePath}.guardian_name.last_name`)}
+            ${createEditItem('AFPSN', info.afpsn, `${basePath}.afpsn`)}
+            ${createEditItem('Branch of Service', info.branch_of_service, `${basePath}.branch_of_service`)}
+            ${createEditItem('Unit Assignment', info.unit_assignment, `${basePath}.unit_assignment`)}
+        </div>
+    </div>`;
         } else {
-            // --- VIEW MODE (No changes needed here) ---
+            // --- VIEW MODE ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-shield-halved text-slate-500"></i>
-                Guardian Information
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <i class="fa-solid fa-shield-halved text-slate-500"></i>
+            Guardian Information
+        </div>
+        <div class="detail-card-body">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div><strong>Name:</strong> ${guardianName}</div>
+                <div><strong>AFPSN:</strong> ${info.afpsn || 'N/A'}</div>
+                <div><strong>Branch of Service:</strong> ${info.branch_of_service || 'N/A'}</div>
+                <div><strong>Unit Assignment:</strong> ${info.unit_assignment || 'N/A'}</div>
             </div>
-            <div class="detail-card-body">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                    <div><strong>Name:</strong> ${guardianName}</div>
-                    <div><strong>AFPSN:</strong> ${info.afpsn || 'N/A'}</div>
-                    <div><strong>Branch of Service:</strong> ${info.branch_of_service || 'N/A'}</div>
-                    <div><strong>Unit Assignment:</strong> ${info.unit_assignment || 'N/A'}</div>
-                </div>
-            </div>
-        </div>`;
+        </div>
+    </div>`;
         }
         container.innerHTML += content;
     }
@@ -898,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content += `</div>`;
         container.innerHTML = content;
     }
-    
+
     function renderRadiologyReports(reports) {
         const container = document.getElementById('radiologyReports');
         if (!reports || reports.length === 0) return;

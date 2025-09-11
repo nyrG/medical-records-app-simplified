@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Detail View Prototype</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* Embedded styles from the project's CSS file for accuracy */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dashboard-tab {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+            border-bottom-width: 2px;
+            border-color: transparent;
+            font-weight: 500;
+            font-size: 0.875rem; /* 14px */
+            color: #64748b; /* text-slate-500 */
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dashboard-tab:hover {
+            color: #334155; /* text-slate-700 */
+            border-color: #cbd5e1; /* border-slate-300 */
+        }
+
+        .dashboard-tab.active {
+            color: #2563eb; /* text-blue-600 */
+            border-color: #3b82f6; /* border-blue-500 */
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 p-4 sm:p-6 lg:p-8">
+
+    <div class="max-w-7xl mx-auto">
+
+        <div class="sticky top-4 z-10 bg-white p-4 rounded-lg border border-slate-200 shadow-sm mb-6 flex items-center justify-between">
+            <h2 class="text-xl font-bold text-slate-800">Viewing: Amelia Reyes</h2>
+            <div class="flex gap-2">
+                <button class="inline-flex items-center gap-2 font-medium py-1.5 px-3.5 rounded-md text-sm bg-white border border-slate-300 text-slate-700 hover:bg-slate-50">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>Back to List</span>
+                </button>
+                <button class="inline-flex items-center gap-2 font-medium py-1.5 px-3.5 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700">
+                    <i class="fa-solid fa-pencil"></i>
+                    <span>Edit Data</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="newDetailView" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
+
+            <aside class="lg:col-span-1 xl:col-span-1 lg:sticky lg:top-28 self-start space-y-6">
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+                    <div class="p-4 border-b border-slate-200">
+                        <h3 class="font-semibold text-slate-800">Amelia Reyes</h3>
+                        <p class="text-sm text-slate-500">Record #: 738491</p>
+                    </div>
+                    <div class="p-4">
+                        <dl class="space-y-2 text-sm">
+                            <div class="flex justify-between items-center">
+                                <dt class="text-slate-500">Date of Birth</dt>
+                                <dd class="font-medium text-slate-800">1985-05-15 (39 yrs)</dd>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <dt class="text-slate-500">Category</dt>
+                                <dd class="font-medium text-slate-800">CIVILIAN</dd>
+                            </div>
+                             <div class="flex justify-between items-center">
+                                <dt class="text-slate-500">Sex</dt>
+                                <dd class="font-medium text-slate-800">Female</dd>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <dt class="text-slate-500">Address</dt>
+                                <dd class="font-medium text-slate-800 text-right">123 Mango St, Cebu City</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+                    <div class="p-4 border-b border-slate-200">
+                        <h3 class="font-semibold text-slate-800">Key Information</h3>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div>
+                            <h4 class="text-sm font-semibold text-red-600 mb-1">Allergies</h4>
+                            <ul class="text-sm list-disc list-inside text-red-700 font-medium">
+                                <li>Penicillin</li>
+                                <li>Aspirin</li>
+                            </ul>
+                        </div>
+                        <div class="border-t border-slate-200 -mx-4"></div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-slate-600 mb-1">Final Diagnoses</h4>
+                            <ul class="text-sm list-disc list-inside text-slate-800">
+                                <li>Hypertension</li>
+                                <li>Type 2 Diabetes</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="lg:col-span-2 xl:col-span-3">
+                <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+                    <div class="border-b border-slate-200">
+                        <nav id="detailTabs" class="flex gap-4 -mb-px px-4 sm:px-6">
+                            <button data-tab="summary" class="dashboard-tab active">AI Summary</button>
+                            <button data-tab="consultations" class="dashboard-tab">Consultations</button>
+                            <button data-tab="labs" class="dashboard-tab">Lab Results</button>
+                            <button data-tab="guardian" class="dashboard-tab">Guardian</button>
+                        </nav>
+                    </div>
+
+                    <div class="p-4 md:p-6">
+                        <div id="summaryPanel" class="tab-panel">
+                            <h3 class="text-lg font-bold text-slate-800 mb-2">AI Smart Summary</h3>
+                            <p class="text-slate-600 leading-relaxed">
+                                Amelia Reyes is a 39-year-old female with a primary diagnosis of Hypertension and Type 2 Diabetes. The patient's key complaints include persistent headaches and fatigue. She is currently taking Metformin and Lisinopril and has known allergies to Penicillin and Aspirin.
+                            </p>
+                        </div>
+
+                        <div id="consultationsPanel" class="tab-panel hidden">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Consultation History</h3>
+                            <div class="space-y-4">
+                               <div class="border border-slate-200 rounded-lg">
+                                   <div class="bg-slate-50 p-3 flex justify-between items-center text-sm">
+                                       <span class="font-semibold text-slate-700">2025-08-22</span>
+                                       <span class="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: 39</span>
+                                   </div>
+                                   <div class="p-4 text-sm space-y-3">
+                                       <div><strong class="text-slate-500 font-medium">Chief Complaint:</strong><p class="text-slate-700">Follow-up for blood pressure management.</p></div>
+                                       <div><strong class="text-slate-500 font-medium">Diagnosis:</strong><p class="text-slate-700">Essential Hypertension</p></div>
+                                       <div><strong class="text-slate-500 font-medium">Treatment Plan:</strong><p class="text-slate-700">Continue Lisinopril 10mg daily. Advised low-sodium diet and regular exercise.</p></div>
+                                   </div>
+                               </div>
+                                <div class="border border-slate-200 rounded-lg">
+                                   <div class="bg-slate-50 p-3 flex justify-between items-center text-sm">
+                                       <span class="font-semibold text-slate-700">2025-06-15</span>
+                                        <span class="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: 39</span>
+                                   </div>
+                                   <div class="p-4 text-sm space-y-3">
+                                       <div><strong class="text-slate-500 font-medium">Chief Complaint:</strong><p class="text-slate-700">Annual check-up and prescription refills.</p></div>
+                                       <div><strong class="text-slate-500 font-medium">Diagnosis:</strong><p class="text-slate-700">Type 2 Diabetes, stable</p></div>
+                                   </div>
+                               </div>
+                            </div>
+                        </div>
+
+                        <div id="labsPanel" class="tab-panel hidden">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Lab Results</h3>
+                            <p class="text-sm text-slate-500">No lab results on file.</p>
+                        </div>
+
+                        <div id="guardianPanel" class="tab-panel hidden">
+                             <dl class="text-sm grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                                <div class="flex flex-col"><dt class="text-slate-500">Name</dt><dd class="font-medium text-slate-800">Juan Reyes</dd></div>
+                                <div class="flex flex-col"><dt class="text-slate-500">AFPSN</dt><dd class="font-medium text-slate-800">123456</dd></div>
+                                <div class="flex flex-col"><dt class="text-slate-500">Branch of Service</dt><dd class="font-medium text-slate-800">N/A</dd></div>
+                                <div class="flex flex-col"><dt class="text-slate-500">Unit Assignment</dt><dd class="font-medium text-slate-800">N/A</dd></div>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Self-contained script for tab functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabsContainer = document.getElementById('detailTabs');
+            if (!tabsContainer) return;
+
+            const tabButtons = tabsContainer.querySelectorAll('.dashboard-tab');
+            const tabPanels = tabsContainer.parentElement.parentElement.querySelectorAll('.tab-panel');
+
+            tabsContainer.addEventListener('click', (e) => {
+                const clickedTab = e.target.closest('.dashboard-tab');
+                if (!clickedTab) return;
+
+                e.preventDefault();
+
+                // Deactivate all tabs
+                tabButtons.forEach(button => {
+                    button.classList.remove('active');
+                });
+
+                // Hide all panels
+                tabPanels.forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+
+                // Activate the clicked tab
+                clickedTab.classList.add('active');
+
+                // Show the corresponding panel
+                const tabId = clickedTab.dataset.tab;
+                const activePanel = document.getElementById(`${tabId}Panel`);
+                if (activePanel) {
+                    activePanel.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>
