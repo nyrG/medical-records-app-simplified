@@ -60,16 +60,17 @@ const seedPatients = async (dataSource: DataSource) => {
                 treatment_plan: `Prescribed ${faker.commerce.productName()}`
             }],
         };
-        
+
         const randomIndex = faker.number.int({ min: 0, max: diagnoses.length - 1 });
         patient.summary = {
-            final_diagnosis: faker.helpers.arrayElement(diagnoses),
+            // Wrap the selected diagnosis in an array
+            final_diagnosis: [faker.helpers.arrayElement(diagnoses)],
             primary_complaint: faker.helpers.arrayElement(complaints),
             key_findings: faker.helpers.arrayElement(findings),
-            current_medications: faker.helpers.arrayElement(medications),
+            medications_taken: faker.helpers.arrayElement(medications),
             allergies: faker.helpers.arrayElement(allergies)
         };
-        
+
         await patientRepository.save(patient);
     }
 

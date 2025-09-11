@@ -238,9 +238,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
+
+                    const arrayFields = [
+                        'summary.final_diagnosis',
+                        'summary.medications_taken',
+                        'summary.allergies'
+                    ];
+
+                    if (arrayFields.includes(path)) {
+                        value = value.split(',').map(item => item.trim()).filter(Boolean);
+                    }
+
                     if (input.type === 'number' && value) {
                         value = parseFloat(value);
-                    } else if (value && !value.trim()) { // Handle empty strings
+                    } else if (typeof value === 'string' && !value.trim()) { // Check if it's a string before trimming
                         value = null;
                     }
                     setValueByPath(updatedData, path, value);
@@ -253,9 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (index !== -1) {
                     allPatients[index] = savedPatient;
                 }
-
-                // Simply select the patient again to refresh the view correctly.
-                // DO NOT call renderPatientList() here.
                 selectPatient(savedPatient.id);
 
                 // --- CREATE LOGIC ---
@@ -264,17 +272,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.querySelectorAll('[data-path]').forEach(input => {
                     const path = input.dataset.path;
                     let value = input.value;
+
+                    const arrayFields = [
+                        'summary.final_diagnosis',
+                        'summary.medications_taken',
+                        'summary.allergies'
+                    ];
+
+                    if (arrayFields.includes(path)) {
+                        value = value.split(',').map(item => item.trim()).filter(Boolean);
+                    }
+
                     if (input.type === 'number' && value) {
                         value = parseFloat(value);
-                    } else if (value && !value.trim()) {
+                    } else if (typeof value === 'string' && !value.trim()) { // Check if it's a string before trimming
                         value = null;
                     }
                     setValueByPath(newPatientData, path, value);
                 });
 
                 const savedPatient = await API.createPatient(newPatientData);
-
-                // Add the new patient to our local array and refresh the list
                 allPatients.push(savedPatient);
                 renderPatientList();
                 selectPatient(savedPatient.id);
@@ -294,6 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(`Error: ${detailedError}`);
         }
     }
+
     async function handleDeletePatient() {
         if (!selectedPatient?.id || !confirm(`Are you sure you want to delete patient ${selectedPatient.name}? This cannot be undone.`)) {
             return;
@@ -497,11 +515,15 @@ document.addEventListener('DOMContentLoaded', () => {
         allPatients.forEach(patient => {
             const tr = document.createElement('tr');
             // Add a class and data-id to the row checkbox
+            const finalDiagnosisText = Array.isArray(patient.summary?.final_diagnosis)
+                ? patient.summary.final_diagnosis.join(', ')
+                : (patient.summary?.final_diagnosis || 'N/A');
+
             tr.innerHTML = `
             <td><input type="checkbox" class="patient-checkbox h-4 w-4 rounded border-gray-300" data-id="${patient.id}"></td>
             <td>${patient.name || 'N/A'}</td>
             <td>${patient.patient_info?.patient_record_number || 'N/A'}</td>
-            <td class="truncate-cell">${patient.summary?.final_diagnosis || 'N/A'}</td>
+            <td class="truncate-cell">${finalDiagnosisText}</td>
             <td>${patient.patient_info?.category || 'N/A'}</td>`;
             // Add event listener to the row itself for navigation
             tr.addEventListener('click', (e) => {
@@ -597,7 +619,6 @@ document.addEventListener('DOMContentLoaded', () => {
         recordContainer.innerHTML = `<section id="patientInfo" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></section><section id="medicalEncounters"><h2 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-6">Medical Encounters</h2><div id="consultations" class="mb-8"></div><div id="labResults" class="mb-8"></div><div id="radiologyReports"></div></section>`;
 
         if (patient_info) renderPatientInfo(patient_info, 'patient_info');
-        if (guardian_info) renderGuardianInfo(guardian_info, 'guardian_info');
         if (medical_encounters?.consultations) renderConsultations(medical_encounters.consultations);
         if (medical_encounters?.lab_results) renderLabResults(medical_encounters.lab_results);
         if (medical_encounters?.radiology_reports) renderRadiologyReports(medical_encounters.radiology_reports);
@@ -605,26 +626,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderDashboard(summary) {
         dashboardContainer.innerHTML = '';
-        if (!summary) return;
 
         // A helper function to create either a view or an edit card
         const createCard = (icon, title, content, path) => {
             let bodyContent;
+            const fallbackText = '<p class="text-slate-400">N/A or Not Found</p>';
 
             if (isEditMode) {
-                // In Edit Mode, use the existing createEditItem helper
-                // We use a simplified version for the dashboard cards
-                const isTextArea = ['key_findings', 'primary_complaint'].includes(path.split('.')[1]);
+                const value = Array.isArray(content) ? content.join(', ') : (content || '');
+
+                const isTextArea = ['key_findings', 'primary_complaint', 'medications_taken'].includes(path.split('.')[1]);
                 if (isTextArea) {
-                    bodyContent = `<textarea data-path="${path}" class="edit-textarea !min-h-[60px]">${Array.isArray(content) ? content.join(', ') : (content || '')}</textarea>`;
+                    bodyContent = `<textarea data-path="${path}" class="edit-textarea !min-h-[60px]">${value}</textarea>`;
                 } else {
-                    bodyContent = `<input type="text" data-path="${path}" value="${Array.isArray(content) ? content.join(', ') : (content || '')}" class="edit-input">`;
+                    bodyContent = `<input type="text" data-path="${path}" value="${value}" class="edit-input">`;
                 }
             } else {
-                // In View Mode, display the content as before
                 if (!content || (Array.isArray(content) && content.length === 0)) {
-                    bodyContent = '<p class="text-slate-400">N/A</p>';
+                    bodyContent = fallbackText;
                 } else if (Array.isArray(content)) {
+                    // This generic array handling now works for medications, allergies, and diagnoses
                     bodyContent = `<ul>${content.map(item => `<li>${item}</li>`).join('')}</ul>`;
                 } else {
                     bodyContent = `<p>${content}</p>`;
@@ -639,18 +660,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
                 <div class="dashboard-card-body">${bodyContent}</div>
             </div>
-        `;
+            `;
         };
 
+        if (!summary) {
+            // If the whole summary is missing, show N/A for all cards
+            dashboardContainer.innerHTML += createCard('fa-flag-checkered', 'Final Diagnosis', null, 'summary.final_diagnosis');
+            dashboardContainer.innerHTML += createCard('fa-user-doctor', 'Primary Complaint', null, 'summary.primary_complaint');
+            dashboardContainer.innerHTML += createCard('fa-magnifying-glass-plus', 'Key Findings', null, 'summary.key_findings');
+            dashboardContainer.innerHTML += createCard('fa-pills', 'Medications Taken', null, 'summary.medications_taken');
+            dashboardContainer.innerHTML += createCard('fa-allergies', 'Allergies', null, 'summary.allergies');
+            return;
+        }
+
+        // --- START: MODIFIED CARD RENDERING ---
         dashboardContainer.innerHTML += createCard('fa-flag-checkered', 'Final Diagnosis', summary.final_diagnosis, 'summary.final_diagnosis');
         dashboardContainer.innerHTML += createCard('fa-user-doctor', 'Primary Complaint', summary.primary_complaint, 'summary.primary_complaint');
         dashboardContainer.innerHTML += createCard('fa-magnifying-glass-plus', 'Key Findings', summary.key_findings, 'summary.key_findings');
-        dashboardContainer.innerHTML += createCard('fa-pills', 'Current Medications', summary.current_medications, 'summary.current_medications');
+        dashboardContainer.innerHTML += createCard('fa-pills', 'Medications Taken', summary.medications_taken, 'summary.medications_taken');
         dashboardContainer.innerHTML += createCard('fa-allergies', 'Allergies', summary.allergies, 'summary.allergies');
+        // --- END: MODIFIED CARD RENDERING ---
     }
 
     // --- Helper Functions ---
-    function createInfoItem(label, value) { return value ? `<div class="py-2"><dt class="font-medium text-gray-500">${label}</dt><dd class="text-gray-900">${value}</dd></div>` : '' }
     function createEditItem(label, value, path) {
         const isTextArea = ['notes', 'findings', 'treatment plan', 'impression'].includes(label.toLowerCase());
         // --- START: MODIFIED INPUT TYPE LOGIC ---
@@ -668,7 +700,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderPatientInfo(info, basePath) {
         const container = document.getElementById('patientInfo');
-        const fullName = [info.full_name?.first_name, info.full_name?.middle_initial, info.full_name?.last_name].filter(Boolean).join(' ');
+        const fullName = [info.full_name?.first_name, info.full_name?.middle_initial, info.full_name?.last_name]
+            .filter(Boolean) // Removes any null or empty parts
+            .join(' ');
 
         let content = '';
 
@@ -714,46 +748,56 @@ document.addEventListener('DOMContentLoaded', () => {
         container.innerHTML += content;
     }
     function renderGuardianInfo(info, basePath) {
+        // First, exit if there is no guardian info object at all.
+        if (!info) {
+            return;
+        }
+
         const container = document.getElementById('patientInfo');
-        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.middle_initial, info.guardian_name?.last_name].filter(Boolean).join(' ');
+        const guardianName = [info.guardian_name?.rank, info.guardian_name?.first_name, info.guardian_name?.middle_initial, info.guardian_name?.last_name].filter(Boolean).join(' ').trim();
+
+        // If after assembling the name, it's still an empty string, do not render the card.
+        if (!guardianName) {
+            return;
+        }
 
         let content = '';
 
         if (isEditMode) {
             // --- EDIT MODE ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-shield-halved text-slate-500"></i>
-                Guardian Information
-            </div>
-            <div class="detail-card-body">
-                ${createEditItem('Rank', info.guardian_name?.rank, `${basePath}.guardian_name.rank`)}
-                ${createEditItem('First Name', info.guardian_name?.first_name, `${basePath}.guardian_name.first_name`)}
-                ${createEditItem('Middle Initial', info.guardian_name?.middle_initial, `${basePath}.guardian_name.middle_initial`)}
-                ${createEditItem('Last Name', info.guardian_name?.last_name, `${basePath}.guardian_name.last_name`)}
-                ${createEditItem('AFPSN', info.afpsn, `${basePath}.afpsn`)}
-                ${createEditItem('Branch of Service', info.branch_of_service, `${basePath}.branch_of_service`)}
-                ${createEditItem('Unit Assignment', info.unit_assignment, `${basePath}.unit_assignment`)}
-            </div>
-        </div>`;
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <i class="fa-solid fa-shield-halved text-slate-500"></i>
+            Guardian Information
+        </div>
+        <div class="detail-card-body">
+            ${createEditItem('Rank', info.guardian_name?.rank, `${basePath}.guardian_name.rank`)}
+            ${createEditItem('First Name', info.guardian_name?.first_name, `${basePath}.guardian_name.first_name`)}
+            ${createEditItem('Middle Initial', info.guardian_name?.middle_initial, `${basePath}.guardian_name.middle_initial`)}
+            ${createEditItem('Last Name', info.guardian_name?.last_name, `${basePath}.guardian_name.last_name`)}
+            ${createEditItem('AFPSN', info.afpsn, `${basePath}.afpsn`)}
+            ${createEditItem('Branch of Service', info.branch_of_service, `${basePath}.branch_of_service`)}
+            ${createEditItem('Unit Assignment', info.unit_assignment, `${basePath}.unit_assignment`)}
+        </div>
+    </div>`;
         } else {
-            // --- VIEW MODE (No changes needed here) ---
+            // --- VIEW MODE ---
             content = `
-        <div class="detail-card">
-            <div class="detail-card-header">
-                <i class="fa-solid fa-shield-halved text-slate-500"></i>
-                Guardian Information
+    <div class="detail-card">
+        <div class="detail-card-header">
+            <i class="fa-solid fa-shield-halved text-slate-500"></i>
+            Guardian Information
+        </div>
+        <div class="detail-card-body">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div><strong>Name:</strong> ${guardianName}</div>
+                <div><strong>AFPSN:</strong> ${info.afpsn || 'N/A'}</div>
+                <div><strong>Branch of Service:</strong> ${info.branch_of_service || 'N/A'}</div>
+                <div><strong>Unit Assignment:</strong> ${info.unit_assignment || 'N/A'}</div>
             </div>
-            <div class="detail-card-body">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                    <div><strong>Name:</strong> ${guardianName}</div>
-                    <div><strong>AFPSN:</strong> ${info.afpsn || 'N/A'}</div>
-                    <div><strong>Branch of Service:</strong> ${info.branch_of_service || 'N/A'}</div>
-                    <div><strong>Unit Assignment:</strong> ${info.unit_assignment || 'N/A'}</div>
-                </div>
-            </div>
-        </div>`;
+        </div>
+    </div>`;
         }
         container.innerHTML += content;
     }
@@ -823,60 +867,65 @@ document.addEventListener('DOMContentLoaded', () => {
         (labs || []).forEach((lab, index) => {
             const basePath = `medical_encounters.lab_results.${index}`;
             content += `<div class="detail-card">
-            <div class="detail-card-header flex justify-between items-center">
-                <h4 class="text-lg font-semibold text-green-600">${lab.test_type || 'Lab Report'}</h4>
-                <span class="text-sm font-medium text-gray-500">${lab.date_performed || 'N/A'}</span>
-            </div>
-            <div class="detail-card-body">`;
+        <div class="detail-card-header flex justify-between items-center">
+            <h4 class="text-lg font-semibold text-green-600">${lab.test_type || 'Lab Report'}</h4>
+            <span class="text-sm font-medium text-gray-500">${lab.date_performed || 'N/A'}</span>
+        </div>
+        <div class="detail-card-body">`;
 
             if (isEditMode) {
                 content += `
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Test</th>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Result</th>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Reference Range</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(lab.results || []).map((res, resultIndex) => {
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Test</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Result</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Unit</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Reference Range</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${(lab.results || []).map((res, resultIndex) => {
                     const resultBasePath = `${basePath}.results.${resultIndex}`;
                     return `<tr>
-                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.test_name" value="${res.test_name || ''}"></td>
-                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.value" value="${res.value || ''} ${res.unit || ''}"></td>
-                                <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.reference_range" value="${res.reference_range || ''}"></td>
-                            </tr>`;
+                            <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.test_name" value="${res.test_name || ''}"></td>
+                            <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.value" value="${res.value || ''}"></td>
+                            <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.unit" value="${res.unit || ''}"></td>
+                            <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.reference_range" value="${res.reference_range || ''}"></td>
+                        </tr>`;
                 }).join('')}
-                    </tbody>
-                </table>
-            `;
+                </tbody>
+            </table>
+        `;
             } else {
                 content += `
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50">
+            <table class="min-w-full text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Test</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Result</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Unit</th>
+                        <th class="px-4 py-2 text-left font-medium text-slate-600">Reference Range</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    ${(lab.results || []).map(res => `
                         <tr>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Test</th>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Result</th>
-                            <th class="px-4 py-2 text-left font-medium text-slate-600">Reference Range</th>
+                            <td class="px-4 py-2 font-medium text-slate-800">${res.test_name || ''}</td>
+                            <td class="px-4 py-2">${res.value || ''}</td>
+                            <td class="px-4 py-2">${res.unit || ''}</td>
+                            <td class="px-4 py-2 text-slate-500">${res.reference_range || ''}</td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-200">
-                        ${(lab.results || []).map(res => `
-                            <tr>
-                                <td class="px-4 py-2 font-medium text-slate-800">${res.test_name || ''}</td>
-                                <td class="px-4 py-2">${res.value || ''} ${res.unit || ''}</td>
-                                <td class="px-4 py-2 text-slate-500">${res.reference_range || ''}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>`;
+                    `).join('')}
+                </tbody>
+            </table>`;
             }
             content += '</div></div>';
         });
         content += `</div>`;
         container.innerHTML = content;
     }
+
     function renderRadiologyReports(reports) {
         const container = document.getElementById('radiologyReports');
         if (!reports || reports.length === 0) return;
