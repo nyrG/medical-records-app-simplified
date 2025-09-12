@@ -37,20 +37,24 @@ const seedPatients = async (dataSource: DataSource) => {
             },
             date_of_birth: faker.date.birthdate({ min: 18, max: 65, mode: 'age' }).toISOString().split('T')[0],
             patient_record_number: faker.string.numeric(6),
-            category: 'Dummy Data',
-            // START: MODIFIED ADDRESS
+            category: 'ACTIVE MILITARY', // Set a relevant category for seeded data
             address: {
                 house_no_street: faker.location.streetAddress(),
-                barangay: 'Guadalupe', // Example Barangay
+                barangay: 'Villamor Air Base',
                 city_municipality: faker.location.city(),
                 province: faker.location.state(),
                 zip_code: faker.location.zipCode(),
             },
-            // END: MODIFIED ADDRESS
+            // START: Added military fields to patient_info
+            rank: faker.helpers.arrayElement(['PVT', 'CPL', 'SGT', 'LTO']),
+            afpsn: faker.string.numeric(7),
+            branch_of_service: faker.helpers.arrayElement(['PA', 'PN', 'PAF']),
+            unit_assignment: faker.company.name(),
+            // END: Added military fields
         };
 
-        patient.guardian_info = {
-            guardian_name: {
+        patient.sponsor_info = {
+            sponsor_name: {
                 first_name: faker.person.firstName(),
                 last_name: lastName,
             },

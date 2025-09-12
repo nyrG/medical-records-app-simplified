@@ -292,11 +292,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // END: New Scroll Logic
 
-        // --- Handle Clear Guardian Button ---
-        if (isEditMode && e.target.closest('#clearGuardianBtn')) {
-            const guardianPanel = document.getElementById('guardianPanel');
-            if (guardianPanel) {
-                guardianPanel.querySelectorAll('input, textarea').forEach(input => {
+        // --- Handle Clear Sponsor Button ---
+        if (isEditMode && e.target.closest('#clearSponsorBtn')) {
+            const sponsorPanel = document.getElementById('sponsorPanel');
+            if (sponsorPanel) {
+                sponsorPanel.querySelectorAll('input, textarea').forEach(input => {
                     input.value = '';
                 });
             }
@@ -353,8 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const checkedPatientSex = document.querySelector('input[data-path="patient_info.sex"]:checked');
                 setValueByPath(updatedData, 'patient_info.sex', checkedPatientSex ? checkedPatientSex.value : null);
-                const checkedGuardianSex = document.querySelector('input[data-path="guardian_info.sex"]:checked');
-                setValueByPath(updatedData, 'guardian_info.sex', checkedGuardianSex ? checkedGuardianSex.value : null);
+                const checkedSponsorSex = document.querySelector('input[data-path="sponsor_info.sex"]:checked');
+                setValueByPath(updatedData, 'sponsor_info.sex', checkedSponsorSex ? checkedSponsorSex.value : null);
 
                 savedPatient = await API.updatePatient(selectedPatient.id, updatedData);
                 const index = allPatients.findIndex(p => p.id === savedPatient.id);
@@ -371,8 +371,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const checkedPatientSex = document.querySelector('input[data-path="patient_info.sex"]:checked');
                 setValueByPath(newPatientData, 'patient_info.sex', checkedPatientSex ? checkedPatientSex.value : null);
-                const checkedGuardianSex = document.querySelector('input[data-path="guardian_info.sex"]:checked');
-                setValueByPath(newPatientData, 'guardian_info.sex', checkedGuardianSex ? checkedGuardianSex.value : null);
+                const checkedSponsorSex = document.querySelector('input[data-path="sponsor_info.sex"]:checked');
+                setValueByPath(newPatientData, 'sponsor_info.sex', checkedSponsorSex ? checkedSponsorSex.value : null);
 
                 savedPatient = await API.createPatient(newPatientData);
                 allPatients.push(savedPatient);
@@ -707,11 +707,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Build the new layout structure inside our dedicated container
         detailContentContainer.innerHTML = `
-        <div id="newDetailView" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-            <aside id="detailSidebar" class="lg:col-span-1 xl:col-span-1 lg:sticky lg:top-24 self-start space-y-6"></aside>
-            <main id="detailMain" class="lg:col-span-2 xl:col-span-3"></main>
-        </div>
-    `;
+            <div id="newDetailView" class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-4">
+                <aside id="detailSidebar" class="lg:col-span-1 xl:col-span-1 lg:sticky lg:top-24 self-start space-y-4"></aside>
+                <main id="detailMain" class="lg:col-span-2 xl:col-span-3"></main>
+            </div>
+        `;
 
         // Populate the new structure with data
         renderDetailSidebar(selectedPatient);
@@ -735,6 +735,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let demographicsHTML = '';
         let keyInfoHTML = '';
 
+        // Helper to check if any service info exists for the patient
+        const hasServiceInfo = patient_info.afpsn || patient_info.branch_of_service || patient_info.unit_assignment;
+
         if (isEditMode) {
             // Edit Mode remains the same
             const sexEditHTML = `
@@ -746,6 +749,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+            const serviceInfoEditHTML = `
+                <div>
+                    <h4 class="text-base font-bold text-slate-800 my-4 border-b pb-2">Service Information</h4>
+                    <div class="space-y-2 pt-2">
+                        ${createEditItem('Rank', patient_info.rank, 'patient_info.rank')}
+                        ${createEditItem('AFPSN', patient_info.afpsn, 'patient_info.afpsn')}
+                        ${createEditItem('Branch of Service', patient_info.branch_of_service, 'patient_info.branch_of_service')}
+                        ${createEditItem('Unit Assignment', patient_info.unit_assignment, 'patient_info.unit_assignment')}
+                    </div>
+                </div>`;
             demographicsHTML = `
                 <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
                     <div class="p-4 border-b border-slate-200"><h3 class="font-semibold text-slate-800">Patient Demographics</h3></div>
@@ -765,6 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             ${createEditItem('Province', patient_info.address?.province, 'patient_info.address.province')}
                             ${createEditItem('ZIP Code', patient_info.address?.zip_code, 'patient_info.address.zip_code')}
                         </div>
+                        ${serviceInfoEditHTML}
                     </div>
                 </div>`;
             keyInfoHTML = `
@@ -796,6 +810,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const address = patient_info.address;
             const fullAddress = address ? [address.house_no_street, address.barangay, address.city_municipality, address.province, address.zip_code].filter(Boolean).join(', ') : 'N/A';
 
+            let serviceInfoHTML = '';
+            if (hasServiceInfo) {
+                serviceInfoHTML = `
+                    <div class="border-t border-slate-200 -mx-5 mt-4"></div>
+                    <div class="pt-4">
+                        <h4 class="font-bold text-lg text-slate-800 mb-3">Service Information</h4>
+                        <dl class="space-y-4">
+                            <div>
+                                <dt class="text-sm text-slate-500">Rank</dt>
+                                <dd class="font-medium text-slate-800">${patient_info.rank || 'N/A'}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm text-slate-500">AFPSN</dt>
+                                <dd class="font-medium text-slate-800">${patient_info.afpsn || 'N/A'}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm text-slate-500">Branch of Service</dt>
+                                <dd class="font-medium text-slate-800">${patient_info.branch_of_service || 'N/A'}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-sm text-slate-500">Unit Assignment</dt>
+                                <dd class="font-medium text-slate-800">${patient_info.unit_assignment || 'N/A'}</dd>
+                            </div>
+                        </dl>
+                    </div>`;
+            }
+
             demographicsHTML = `
                 <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
                     <div class="p-5 border-b border-slate-200">
@@ -809,6 +850,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div><dt class="text-sm text-slate-500">Sex</dt><dd class="font-medium text-slate-800">${sexDisplay}</dd></div>
                             <div><dt class="text-sm text-slate-500">Address</dt><dd class="font-medium text-slate-800">${fullAddress}</dd></div>
                         </dl>
+                        ${serviceInfoHTML}
                     </div>
                 </div>`;
 
@@ -847,11 +889,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const mainContent = document.getElementById('detailMain');
         if (!mainContent) return;
 
-        const { summary, guardian_info } = patient;
+        const { summary, sponsor_info } = patient;
         let summaryHTML = '';
-        let guardianHTML = '';
+        let sponsorHTML = '';
 
-        // --- Summary Panel Logic (Unchanged) ---
         if (isEditMode) {
             summaryHTML = `<div class="space-y-4">
                                 ${createEditItem('Key Findings', summary?.key_findings, 'summary.key_findings')}
@@ -876,19 +917,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>`;
         }
 
-        // --- START: Updated Guardian Panel Logic ---
         if (isEditMode) {
-            const guardianSexEditHTML = `
+            const sponsorSexEditHTML = `
                 <div class="py-2 grid grid-cols-3 items-center gap-4">
                     <label class="font-medium text-sm text-gray-600 col-span-1">Sex</label>
                     <div class="col-span-2 flex items-center gap-4">
-                        <label class="flex items-center gap-2 text-sm"><input type="radio" name="guardian-sex-edit" value="M" data-path="guardian_info.sex" ${guardian_info?.sex === 'M' ? 'checked' : ''}> Male</label>
-                        <label class="flex items-center gap-2 text-sm"><input type="radio" name="guardian-sex-edit" value="F" data-path="guardian_info.sex" ${guardian_info?.sex === 'F' ? 'checked' : ''}> Female</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="radio" name="sponsor-sex-edit" value="M" data-path="sponsor_info.sex" ${sponsor_info?.sex === 'M' ? 'checked' : ''}> Male</label>
+                        <label class="flex items-center gap-2 text-sm"><input type="radio" name="sponsor-sex-edit" value="F" data-path="sponsor_info.sex" ${sponsor_info?.sex === 'F' ? 'checked' : ''}> Female</label>
                     </div>
                 </div>`;
-            guardianHTML = `<div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-semibold text-gray-700">Guardian Information</h3>
-                                <button id="clearGuardianBtn" class="btn btn-secondary !py-1 !px-3 text-sm">
+            sponsorHTML = `<div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-semibold text-gray-700">Sponsor Information</h3>
+                                <button id="clearSponsorBtn" class="btn btn-secondary !py-1 !px-3 text-sm">
                                     <i class="fa-solid fa-eraser"></i> Clear Fields
                                 </button>
                             </div>
@@ -896,32 +936,32 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div>
                                     <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Personal Information</h4>
                                     <div class="space-y-2 pt-2">
-                                        ${createEditItem('First Name', guardian_info?.guardian_name?.first_name, 'guardian_info.guardian_name.first_name')}
-                                        ${createEditItem('Middle Initial', guardian_info?.guardian_name?.middle_initial, 'guardian_info.guardian_name.middle_initial')}
-                                        ${createEditItem('Last Name', guardian_info?.guardian_name?.last_name, 'guardian_info.guardian_name.last_name')}
-                                        ${guardianSexEditHTML}
+                                        ${createEditItem('First Name', sponsor_info?.sponsor_name?.first_name, 'sponsor_info.sponsor_name.first_name')}
+                                        ${createEditItem('Middle Initial', sponsor_info?.sponsor_name?.middle_initial, 'sponsor_info.sponsor_name.middle_initial')}
+                                        ${createEditItem('Last Name', sponsor_info?.sponsor_name?.last_name, 'sponsor_info.sponsor_name.last_name')}
+                                        ${sponsorSexEditHTML}
                                     </div>
                                 </div>
                                 <div>
                                     <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Service Information</h4>
                                     <div class="space-y-2 pt-2">
-                                        ${createEditItem('Rank', guardian_info?.guardian_name?.rank, 'guardian_info.guardian_name.rank')}
-                                        ${createEditItem('AFPSN', guardian_info?.afpsn, 'guardian_info.afpsn')}
-                                        ${createEditItem('Branch of Service', guardian_info?.branch_of_service, 'guardian_info.branch_of_service')}
-                                        ${createEditItem('Unit Assignment', guardian_info?.unit_assignment, 'guardian_info.unit_assignment')}
+                                        ${createEditItem('Rank', sponsor_info?.sponsor_name?.rank, 'sponsor_info.sponsor_name.rank')}
+                                        ${createEditItem('AFPSN', sponsor_info?.afpsn, 'sponsor_info.afpsn')}
+                                        ${createEditItem('Branch of Service', sponsor_info?.branch_of_service, 'sponsor_info.branch_of_service')}
+                                        ${createEditItem('Unit Assignment', sponsor_info?.unit_assignment, 'sponsor_info.unit_assignment')}
                                     </div>
                                 </div>
                             </div>`;
         } else {
-            const gn = guardian_info?.guardian_name;
-            const guardianMI = gn?.middle_initial ? `${gn.middle_initial}.` : '';
-            const guardianFullName = [gn?.first_name, guardianMI, gn?.last_name].filter(Boolean).join(' ').trim();
-            let guardianSexDisplay = 'N/A';
-            if (guardian_info?.sex === 'M') guardianSexDisplay = 'Male';
-            else if (guardian_info?.sex === 'F') guardianSexDisplay = 'Female';
+            const gn = sponsor_info?.sponsor_name;
+            const sponsorMI = gn?.middle_initial ? `${gn.middle_initial}.` : '';
+            const sponsorFullName = [gn?.first_name, sponsorMI, gn?.last_name].filter(Boolean).join(' ').trim();
+            let sponsorSexDisplay = 'N/A';
+            if (sponsor_info?.sex === 'M') sponsorSexDisplay = 'Male';
+            else if (sponsor_info?.sex === 'F') sponsorSexDisplay = 'Female';
 
-            if (guardianFullName) {
-                const createGuardianDetailItem = (icon, label, value) => `
+            if (sponsorFullName) {
+                const createSponsorDetailItem = (icon, label, value) => `
                     <div>
                         <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
                             <i class="fa-solid ${icon} w-4 text-center"></i>
@@ -930,35 +970,34 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-slate-800 mt-1 ml-6">${value || 'N/A'}</p>
                     </div>`;
 
-                guardianHTML = `<div class="space-y-8">
+                sponsorHTML = `<div class="space-y-8">
                                     <div>
                                         <h4 class="text-base font-bold text-slate-800 mb-4">Personal Information</h4>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                                            ${createGuardianDetailItem('fa-user', 'Name', guardianFullName)}
-                                            ${createGuardianDetailItem('fa-venus-mars', 'Sex', guardianSexDisplay)}
+                                            ${createSponsorDetailItem('fa-user', 'Name', sponsorFullName)}
+                                            ${createSponsorDetailItem('fa-venus-mars', 'Sex', sponsorSexDisplay)}
                                         </div>
                                     </div>
                                     <div>
                                         <h4 class="text-base font-bold text-slate-800 mb-4">Service Information</h4>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
-                                            ${createGuardianDetailItem('fa-star', 'Rank', gn.rank)}
-                                            ${createGuardianDetailItem('fa-id-card', 'AFPSN', guardian_info.afpsn)}
-                                            ${createGuardianDetailItem('fa-building-flag', 'Branch of Service', guardian_info.branch_of_service)}
+                                            ${createSponsorDetailItem('fa-star', 'Rank', gn.rank)}
+                                            ${createSponsorDetailItem('fa-id-card', 'AFPSN', sponsor_info.afpsn)}
+                                            ${createSponsorDetailItem('fa-building-flag', 'Branch of Service', sponsor_info.branch_of_service)}
                                             <div class="sm:col-span-2">
-                                                ${createGuardianDetailItem('fa-location-dot', 'Unit Assignment', guardian_info.unit_assignment)}
+                                                ${createSponsorDetailItem('fa-location-dot', 'Unit Assignment', sponsor_info.unit_assignment)}
                                             </div>
                                         </div>
                                     </div>
                                 </div>`;
             } else {
-                guardianHTML = `<div class="text-center py-12 text-slate-400">
+                sponsorHTML = `<div class="text-center py-12 text-slate-400">
                                     <i class="fa-solid fa-user-shield fa-3x mb-3"></i>
-                                    <p class="font-medium">No Guardian Information</p>
-                                    <p class="text-sm">There is no guardian on file for this patient.</p>
+                                    <p class="font-medium">No Sponsor Information</p>
+                                    <p class="text-sm">There is no sponsor on file for this patient.</p>
                                 </div>`;
             }
         }
-        // --- END: Updated Guardian Panel Logic ---
 
         mainContent.innerHTML = `<div class="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
                                     <div class="border-b border-slate-200">
@@ -967,17 +1006,31 @@ document.addEventListener('DOMContentLoaded', () => {
                                             <button data-tab="consultations" class="dashboard-tab">Consultations</button>
                                             <button data-tab="labs" class="dashboard-tab">Lab Results</button>
                                             <button data-tab="radiology" class="dashboard-tab">Radiology</button>
-                                            <button data-tab="guardian" class="dashboard-tab">Guardian</button>
+                                            <button data-tab="sponsor" class="dashboard-tab">Sponsor</button>
                                         </nav>
                                     </div>
-                                    <div class="p-4 md:p-6 max-h-[calc(100vh-18rem)] overflow-y-auto">
+                                    <div id="tabContentScroller" class="p-4 md:p-6 max-h-[calc(100vh-20rem)] overflow-y-auto">
                                         <div id="summaryPanel" class="tab-panel">${summaryHTML}</div>
                                         <div id="consultationsPanel" class="tab-panel hidden"></div>
                                         <div id="labsPanel" class="tab-panel hidden"></div>
                                         <div id="radiologyPanel" class="tab-panel hidden"></div>
-                                        <div id="guardianPanel" class="tab-panel hidden">${guardianHTML}</div>
+                                        <div id="sponsorPanel" class="tab-panel hidden">${sponsorHTML}</div>
                                     </div>
                                 </div>`;
+
+        const scroller = document.getElementById('tabContentScroller');
+        if (scroller) {
+            scroller.addEventListener('scroll', () => {
+                const fab = scroller.querySelector('.tab-panel:not(.hidden) .scroll-to-top-fab');
+                if (fab) {
+                    if (scroller.scrollTop > 100) {
+                        fab.classList.remove('hidden');
+                    } else {
+                        fab.classList.add('hidden');
+                    }
+                }
+            });
+        }
     }
 
     function setupDetailTabs() {
@@ -1050,9 +1103,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
 
-            const fabHTML = `<button id="consultationScrollTopBtn" class="scroll-to-top-fab" title="Back to top">
+            // START: Added FAB HTML
+            const fabHTML = `<button class="scroll-to-top-fab hidden" data-target-panel="consultationsPanel" title="Back to top">
                                 <i class="fa-solid fa-arrow-up"></i>
                              </button>`;
+            // END: Added FAB HTML
 
             let content = `<div class="space-y-4">`;
             consultations.forEach((item, index) => {
@@ -1067,73 +1122,62 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>`;
 
                 content += `<div class="detail-card" id="consultation-${index}">
-                                <div class="detail-card-header flex justify-between items-center">
+                                <div class="detail-card-header flex justify-between items-center" style="background-color: #f1f5f9;">
                                     <span>
                                         <i class="fa-solid fa-calendar-alt mr-2 text-slate-400"></i>
                                         <strong>Date:</strong> ${isEditMode ? `<input type="date" data-path="${basePath}.consultation_date" value="${item.consultation_date || ''}" class="edit-input w-40 ml-2">` : (item.consultation_date || 'N/A')}
                                     </span>
                                     ${isEditMode
-                        ? `<button class="btn btn-danger !py-1 !px-2 text-xs delete-btn-dynamic" data-type="consultation" data-index="${index}" title="Delete this consultation">
-                                               <i class="fa-solid fa-trash-can"></i>
-                                           </button>`
+                        ? `<button class="btn btn-danger !py-1 !px-2 text-xs delete-btn-dynamic" data-type="consultation" data-index="${index}" title="Delete this consultation"><i class="fa-solid fa-trash-can"></i></button>`
                         : item.age_at_visit ? `<span class="text-sm bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">Age: ${item.age_at_visit}</span>` : ''
                     }
                                 </div>
-                                <div class="detail-card-body">`;
-                if (isEditMode) {
-                    content += `<div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Vitals</h4>
-                                        <div class="grid grid-cols-3 gap-4 pt-2">
-                                            ${createEditItem('Height (cm)', item.vitals?.height_cm, `${basePath}.vitals.height_cm`)}
-                                            ${createEditItem('Weight (kg)', item.vitals?.weight_kg, `${basePath}.vitals.weight_kg`)}
-                                            ${createEditItem('Temp (°C)', item.vitals?.temperature_c, `${basePath}.vitals.temperature_c`)}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Encounter Details</h4>
-                                        <div class="space-y-2 pt-2">
-                                            ${createEditItem("Chief Complaint", item.chief_complaint, `${basePath}.chief_complaint`)}
-                                            ${createEditItem("Notes / HPI", item.notes, `${basePath}.notes`)}
-                                            ${createEditItem("Diagnosis", item.diagnosis, `${basePath}.diagnosis`)}
-                                            ${createEditItem("Treatment Plan", item.treatment_plan, `${basePath}.treatment_plan`)}
-                                            ${createEditItem("Attending Physician", item.attending_physician, `${basePath}.attending_physician`)}
-                                        </div>
-                                    </div>
-                                </div>`;
-                } else {
-                    const createVitalsItem = (icon, label, value, unit) => `
-                        <div>
-                            <div class="flex items-center gap-2 text-sm font-semibold text-slate-600">
-                                <i class="fa-solid ${icon} w-4 text-center"></i>
-                                <span>${label}</span>
-                            </div>
-                            <p class="text-slate-700 mt-1 ml-6">${value || 'N/A'} ${unit}</p>
-                        </div>`;
-
-                    content += `<div class="space-y-6">
-                                    <div>
-                                        <h4 class="text-base font-bold text-slate-800 mb-3">Vitals</h4>
-                                        <div class="grid grid-cols-3 gap-4">
-                                            ${createVitalsItem('fa-ruler-vertical', 'Height', item.vitals?.height_cm, 'cm')}
-                                            ${createVitalsItem('fa-weight-scale', 'Weight', item.vitals?.weight_kg, 'kg')}
-                                            ${createVitalsItem('fa-temperature-half', 'Temp', item.vitals?.temperature_c, '°C')}
-                                        </div>
-                                    </div>
-                                    <div class="border-t border-slate-200"></div>
-                                    <div>
-                                        <h4 class="text-base font-bold text-slate-800 mb-4">Encounter Details</h4>
-                                        <div class="space-y-4">
-                                            ${createViewItem('fa-comment-dots', 'Chief Complaint', item.chief_complaint)}
-                                            ${createViewItem('fa-file-lines', 'Notes / HPI', item.notes)}
-                                            ${createViewItem('fa-stethoscope', 'Diagnosis / Assessment', item.diagnosis)}
-                                            ${createViewItem('fa-prescription-bottle-medical', 'Treatment Plan', item.treatment_plan)}
-                                            ${createViewItem('fa-user-doctor', 'Attending Physician', item.attending_physician)}
-                                        </div>
-                                    </div>
-                                </div>`;
-                }
-                content += `</div></div>`;
+                                <div class="detail-card-body">
+                                    ${isEditMode ?
+                        `<div class="space-y-6">
+                                            <div>
+                                                <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Vitals</h4>
+                                                <div class="grid grid-cols-3 gap-4 pt-2">
+                                                    ${createEditItem('Height (cm)', item.vitals?.height_cm, `${basePath}.vitals.height_cm`)}
+                                                    ${createEditItem('Weight (kg)', item.vitals?.weight_kg, `${basePath}.vitals.weight_kg`)}
+                                                    ${createEditItem('Temp (°C)', item.vitals?.temperature_c, `${basePath}.vitals.temperature_c`)}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 class="text-base font-bold text-slate-800 mb-2 border-b pb-2">Encounter Details</h4>
+                                                <div class="space-y-2 pt-2">
+                                                    ${createEditItem("Chief Complaint", item.chief_complaint, `${basePath}.chief_complaint`)}
+                                                    ${createEditItem("Notes / HPI", item.notes, `${basePath}.notes`)}
+                                                    ${createEditItem("Diagnosis", item.diagnosis, `${basePath}.diagnosis`)}
+                                                    ${createEditItem("Treatment Plan", item.treatment_plan, `${basePath}.treatment_plan`)}
+                                                    ${createEditItem("Attending Physician", item.attending_physician, `${basePath}.attending_physician`)}
+                                                </div>
+                                            </div>
+                                        </div>` :
+                        `<div class="space-y-6">
+                                            <div>
+                                                <h4 class="text-base font-bold text-slate-800 mb-3">Vitals</h4>
+                                                <div class="grid grid-cols-3 gap-4">
+                                                    ${((icon, label, value, unit) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6">${value || 'N/A'} ${unit}</p></div>`)('fa-ruler-vertical', 'Height', item.vitals?.height_cm, 'cm')}
+                                                    ${((icon, label, value, unit) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6">${value || 'N/A'} ${unit}</p></div>`)('fa-weight-scale', 'Weight', item.vitals?.weight_kg, 'kg')}
+                                                    ${((icon, label, value, unit) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6">${value || 'N/A'} ${unit}</p></div>`)('fa-temperature-half', 'Temp', item.vitals?.temperature_c, '°C')}
+                                                </div>
+                                            </div>
+                                            <div class="border-t border-slate-200"></div>
+                                            <div>
+                                                <h4 class="text-base font-bold text-slate-800 mb-4">Encounter Details</h4>
+                                                <div class="space-y-4">
+                                                    ${((icon, label, value) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p></div>`)('fa-comment-dots', 'Chief Complaint', item.chief_complaint)}
+                                                    ${((icon, label, value) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p></div>`)('fa-file-lines', 'Notes / HPI', item.notes)}
+                                                    ${((icon, label, value) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p></div>`)('fa-stethoscope', 'Diagnosis / Assessment', item.diagnosis)}
+                                                    ${((icon, label, value) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p></div>`)('fa-prescription-bottle-medical', 'Treatment Plan', item.treatment_plan)}
+                                                    ${((icon, label, value) => `<div><div class="flex items-center gap-2 text-sm font-semibold text-slate-600"><i class="fa-solid ${icon} w-4 text-center"></i><span>${label}</span></div><p class="text-slate-700 mt-1 ml-6 whitespace-pre-wrap">${value || 'N/A'}</p></div>`)('fa-user-doctor', 'Attending Physician', item.attending_physician)}
+                                                </div>
+                                            </div>
+                                        </div>`
+                    }
+                                </div>
+                            </div>`;
             });
             content += `</div>`;
             container.innerHTML = header + quickLinksContainer + content + fabHTML;
@@ -1162,9 +1206,11 @@ document.addEventListener('DOMContentLoaded', () => {
         header += `</div>`;
 
         if (labs && labs.length > 0) {
-            const quickLinks = labs.map((lab, index) =>
-                `<a href="#lab-${index}" class="quick-link-chip">${lab.test_type || lab.date_performed || `Entry ${index + 1}`}</a>`
-            ).join('');
+            const quickLinks = labs.map((lab, index) => {
+                const label = lab.test_type || `Entry ${index + 1}`;
+                const datePart = lab.date_performed ? ` (${lab.date_performed})` : '';
+                return `<a href="#lab-${index}" class="quick-link-chip">${label}${datePart}</a>`;
+            }).join('');
 
             const quickLinksContainer = `
                 <div class="detail-card mb-4">
@@ -1180,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
 
-            const fabHTML = `<button class="scroll-to-top-fab" data-target-panel="labsPanel" title="Back to top">
+            const fabHTML = `<button class="scroll-to-top-fab hidden" data-target-panel="labsPanel" title="Back to top">
                                 <i class="fa-solid fa-arrow-up"></i>
                              </button>`;
 
@@ -1197,9 +1243,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                                 <div class="detail-card-body">
                                     ${isEditMode ?
-                        `<div>${createEditItem('Test Type', lab.test_type, `${basePath}.test_type`)}</div>` :
-                        `<h4 class="text-lg font-semibold text-green-600 mb-4">${lab.test_type || 'Lab Report'}</h4>`
-                    }
+                                        `<div>${createEditItem('Test Type', lab.test_type, `${basePath}.test_type`)}</div>` : 
+                                        `<h4 class="text-lg font-semibold text-green-600 mb-4">${lab.test_type || 'Lab Report'}</h4>`
+                                    }
                                     <table class="min-w-full text-sm">
                                         <thead class="bg-slate-50">
                                             <tr>
@@ -1211,23 +1257,23 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </thead>
                                         <tbody class="divide-y divide-slate-200">
                                             ${(lab.results || []).map((res, resultIndex) => {
-                        if (isEditMode) {
-                            const resultBasePath = `${basePath}.results.${resultIndex}`;
-                            return `<tr>
+                                                if (isEditMode) {
+                                                    const resultBasePath = `${basePath}.results.${resultIndex}`;
+                                                    return `<tr>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.test_name" value="${res.test_name || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.value" value="${res.value || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.unit" value="${res.unit || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.reference_range" value="${res.reference_range || ''}"></td>
                                                             </tr>`;
-                        } else {
-                            return `<tr>
+                                                } else {
+                                                    return `<tr>
                                                                 <td class="px-4 py-2 font-medium text-slate-800">${res.test_name || ''}</td>
                                                                 <td class="px-4 py-2">${res.value || ''}</td>
                                                                 <td class="px-4 py-2">${res.unit || ''}</td>
                                                                 <td class="px-4 py-2 text-slate-500">${res.reference_range || ''}</td>
                                                             </tr>`;
-                        }
-                    }).join('')}
+                                                }
+                                            }).join('')}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1238,7 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             container.innerHTML = header + `
                 <div class="text-center py-12 text-slate-400">
-                    <i class="fa-solid fa-vial-circle-xmark fa-3x mb-3"></i>
+                    <i class="fa-solid fa-flask-vial fa-3x mb-3"></i>
                     <p class="font-medium">No Lab Results</p>
                     <p class="text-sm">There are no lab results on file for this patient.</p>
                 </div>`;
@@ -1261,9 +1307,11 @@ document.addEventListener('DOMContentLoaded', () => {
         header += `</div>`;
 
         if (reports && reports.length > 0) {
-            const quickLinks = reports.map((report, index) =>
-                `<a href="#radiology-${index}" class="quick-link-chip">${report.examination || report.date_performed || `Entry ${index + 1}`}</a>`
-            ).join('');
+            const quickLinks = reports.map((report, index) => {
+                const label = report.examination || `Entry ${index + 1}`;
+                const datePart = report.date_performed ? ` (${report.date_performed})` : '';
+                return `<a href="#radiology-${index}" class="quick-link-chip">${label}${datePart}</a>`;
+            }).join('');
 
             const quickLinksContainer = `
                 <div class="detail-card mb-4">
@@ -1279,7 +1327,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>`;
 
-            const fabHTML = `<button class="scroll-to-top-fab" data-target-panel="radiologyPanel" title="Back to top">
+            const fabHTML = `<button class="scroll-to-top-fab hidden" data-target-panel="radiologyPanel" title="Back to top">
                                 <i class="fa-solid fa-arrow-up"></i>
                              </button>`;
 
@@ -1366,6 +1414,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (buttonToActivate) buttonToActivate.classList.add('active');
         if (panelToActivate) panelToActivate.classList.remove('hidden');
+
+        // Check scroll position when tab changes
+        const scroller = document.getElementById('tabContentScroller');
+        const fab = panelToActivate?.querySelector('.scroll-to-top-fab');
+        if (scroller && fab) {
+            if (scroller.scrollTop > 100) {
+                fab.classList.remove('hidden');
+            } else {
+                fab.classList.add('hidden');
+            }
+        }
     }
 
     // Start the application

@@ -29,7 +29,7 @@ export class PatientsService {
       .join(' ');
 
     // Explicitly set to null if undefined to match the entity and database
-    patient.guardian_info = createPatientDto.guardian_info ?? null;
+    patient.sponsor_info = createPatientDto.sponsor_info ?? null;
     patient.medical_encounters = createPatientDto.medical_encounters ?? null;
     patient.summary = createPatientDto.summary ?? null;
 

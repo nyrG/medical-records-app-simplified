@@ -57,7 +57,7 @@ export class ExtractionService {
       };
 
       formatMiddleInitial(data.patient_info?.full_name);
-      formatMiddleInitial(data.guardian_info?.guardian_name);
+      formatMiddleInitial(data.sponsor_info?.sponsor_name);
 
       const standardizeSex = (infoObject) => {
         if (infoObject && typeof infoObject.sex === 'string') {
@@ -73,7 +73,7 @@ export class ExtractionService {
       };
 
       standardizeSex(data.patient_info);
-      standardizeSex(data.guardian_info);
+      standardizeSex(data.sponsor_info);
     }
     return data;
   }
@@ -98,9 +98,13 @@ export class ExtractionService {
             "province": null,
             "zip_code": null
         },
-        "category": null
+        "category": null,
+        "rank": null,
+        "afpsn": null,
+        "branch_of_service": null,
+        "unit_assignment": null
       },
-      "guardian_info": { "guardian_name": { "rank": null, "first_name": null, "middle_initial": null, "last_name": null }, "sex": null, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
+      "sponsor_info": { "sponsor_name": { "rank": null, "first_name": null, "middle_initial": null, "last_name": null }, "sex": null, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
       "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "height_cm": null, "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
       "summary": {
         "final_diagnosis": [],
@@ -146,14 +150,16 @@ export class ExtractionService {
       2.  **Data Quality and Coherence**: All extracted text must be proofread to correct OCR errors, ensure it is coherent, and written in English.
       3.  **Handle Document Layout**: Pay close attention to the document's layout. Often, the value for a field is written on the line ABOVE its corresponding label (e.g., the name "MEDINA" appears above the label "LAST NAME").
       4.  **No Extra Text**: Your final output must only be the raw JSON object.
+      5.  **Documents with Sponsors**: If a sponsor is present in the document, ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'sponsor_info' object. The corresponding fields in 'patient_info' should be null. Only if the PATIENT is the service member should these fields be filled in 'patient_info'.
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
+      - **branch_of_service**: This may be abbreviated as "br of svc" in the document.
       - **address**: Deconstruct the address into its specific components: house_no_street, barangay, city_municipality, province, and zip_code.
-      - **sex (for both patient and guardian)**: If sex is not explicitly written, infer it from the person's first name. Standardize the output to "M" for male, "F" for female, or null if it cannot be determined.
+      - **sex (for both patient and sponsor)**: If sex is not explicitly written, infer it from the person's first name. Standardize the output to "M" for male, "F" for female, or null if it cannot be determined.
       - **summary.final_diagnosis**: First, try to match the condition to one or more items from the provided Diagnosis List. If no match is found, formulate a concise diagnosis based on the document's findings as a last resort. Return as a JSON array.
       - **summary.medications_taken**: Extract a list of medications from the most recent 'Treatment Plan'. Each item must be a string including the name, dosage, and frequency.
       - **patient_info.category**: You MUST select the most fitting category from the provided Category List.
-      - **full_name properties (for both patient and guardian)**: These fields can contain multiple words (e.g., "AMGGYMEL VHANESA" or "JOSE RIZAL"). You must extract all parts of the first name into the single "first_name" property.
+      - **full_name properties (for both patient and sponsor)**: These fields can contain multiple words (e.g., "AMGGYMEL VHANESA" or "JOSE RIZAL"). You must extract all parts of the first name into the single "first_name" property.
       - **dates**: All dates must be in "YYYY-MM-DD" format (e.g., "13-Oct-91" becomes "1991-10-13").
       - **Laboratory Results**: Extract each individual test from a lab report table. For each test, you must separate the numerical result from its unit. For example, for "75.20 µmol/L", the "value" should be "75.20" and the "unit" should be "µmol/L".
       

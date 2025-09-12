@@ -12,6 +12,10 @@ type PatientInfo = {
     province?: string;
     zip_code?: string;
   } | null;
+  rank?: string | null;
+  afpsn?: string | null;
+  branch_of_service?: string | null;
+  unit_assignment?: string | null;
   [key: string]: any;
 };
 
@@ -34,7 +38,7 @@ export class Patient {
   patient_info: PatientInfo;
 
   @Column('jsonb', { nullable: true })
-  guardian_info: object | null;
+  sponsor_info: object | null;
 
   @Column('jsonb', { nullable: true })
   medical_encounters: {
