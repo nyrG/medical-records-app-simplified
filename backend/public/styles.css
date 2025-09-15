@@ -446,3 +446,135 @@ body {
 .quick-access-chevron.rotate-180 {
     transform: rotate(180deg);
 }
+
+/* --- 10. Multi-Step Modal Styles --- */
+.modal-step {
+    display: none;
+}
+
+.modal-step.active {
+    display: block;
+    /* Reuses an existing animation for a smooth fade-in effect */
+    animation: fadeInSlideUp 0.4s ease-out forwards;
+}
+
+/* --- 11. Final Stepper Indicator Styles --- */
+.step-item {
+    position: relative;
+}
+
+/* This pseudo-element creates the connecting line */
+.step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 1rem;
+    /* Aligns with the vertical center of the 2rem (h-8) circle */
+    transform: translateY(-50%);
+    width: 100%;
+    height: 2px;
+    /* MODIFIED: Made the line thinner */
+    background-color: #e2e8f0;
+    /* Default line color: slate-200 */
+    z-index: 0;
+    transition: background-color 0.3s ease;
+}
+
+.step-circle {
+    position: relative;
+    z-index: 1;
+    /* Keeps the circle above the line */
+    background-color: white;
+    border-color: #e2e8f0;
+    /* Default border: slate-200 */
+    color: #94a3b8;
+    /* Default text: slate-400 */
+    transition: all 0.3s ease;
+}
+
+.step-title {
+    color: #94a3b8;
+    /* Default text: slate-400 */
+    font-weight: 400;
+    /* MODIFIED: Use a consistent, normal font weight */
+    transition: color 0.3s ease;
+}
+
+/* State: Completed */
+.step-item.completed .step-circle {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: white;
+}
+
+.step-item.completed .step-title {
+    color: var(--color-primary);
+    /* Use blue for completed titles */
+}
+
+.step-item.completed::after {
+    background-color: var(--color-primary);
+}
+
+/* State: Active */
+.step-item.active .step-circle {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.step-item.active .step-title {
+    color: var(--color-primary);
+    /* Use blue for the active title */
+    /* MODIFIED: Removed font-weight override to keep it consistent */
+}
+
+/* --- 12. Modal & Element Animations --- */
+
+/* Keyframes for the modal's entrance and exit */
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes modal-exit {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+/* Keyframes for the background overlay */
+@keyframes overlay-enter {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes overlay-exit {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+/* Classes to apply the animations */
+.modal-entering {
+    animation: overlay-enter 0.2s ease-out forwards;
+}
+.modal-entering .modal-content {
+    animation: modal-enter 0.2s ease-out forwards;
+}
+
+.modal-exiting {
+    animation: overlay-exit 0.2s ease-in forwards;
+}
+.modal-exiting .modal-content {
+    animation: modal-exit 0.2s ease-in forwards;
+}

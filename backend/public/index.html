@@ -128,48 +128,175 @@
 
         <div id="uploadModal"
             class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 z-40 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg shadow-xl w-full max-w-md border border-slate-200 overflow-hidden">
-                <div class="flex items-center gap-3 p-4 border-b border-slate-200 bg-slate-50">
-                    <i class="fa-solid fa-cloud-arrow-up text-blue-500 text-xl"></i>
-                    <h2 class="text-lg font-semibold text-slate-800">Create New Patient from PDF</h2>
+            <div
+                class="modal-content bg-white rounded-lg shadow-xl w-full max-w-2xl border border-slate-200 overflow-hidden max-h-screen overflow-y-auto">
+                <div class="p-5 border-b border-slate-200">
+                    <h2 class="flex items-center gap-3 text-xl font-semibold text-slate-800">
+                        <i class="fa-solid fa-notes-medical text-blue-500"></i>
+                        <span>Create New Patient Record</span>
+                    </h2>
+                    <p class="text-sm text-slate-500 mt-1 ml-9">Follow the steps below to upload and extract patient
+                        data.</p>
                 </div>
 
-                <div class="p-6">
-                    <p class="text-slate-600 mb-6 text-sm">Select a medical document. The AI will extract the
-                        information for your review before a new record is created.</p>
-                    <div>
-                        <input type="file" id="pdfFile" accept=".pdf"
-                            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                        <p id="fileError" class="text-red-500 text-sm mt-2"></p>
+                <div class="p-4 sm:p-6">
+                    <div class="flex items-start">
+                        <div class="step-item flex-1 text-center" data-step="1">
+                            <div class="relative mb-2">
+                                <div class="step-line"></div>
+                                <div
+                                    class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
+                                    1</div>
+                            </div>
+                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Upload</p>
+                        </div>
+                        <div class="step-item flex-1 text-center" data-step="2">
+                            <div class="relative mb-2">
+                                <div class="step-line"></div>
+                                <div
+                                    class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
+                                    2</div>
+                            </div>
+                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Configure</p>
+                        </div>
+                        <div class="step-item flex-1 text-center" data-step="3">
+                            <div class="relative mb-2">
+                                <div class="step-line"></div>
+                                <div
+                                    class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
+                                    3</div>
+                            </div>
+                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Process</p>
+                        </div>
+                        <div class="step-item flex-1 text-center" data-step="4">
+                            <div class="relative mb-2">
+                                <div
+                                    class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
+                                    4</div>
+                            </div>
+                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Review</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-3">
-                    <button id="closeModalBtn" class="btn btn-secondary">Cancel</button>
-                    <button id="processPdfBtn" class="btn btn-primary">Upload & Process</button>
+                <div class="p-4 sm:p-6 bg-slate-50 min-h-[300px]">
+                    <div id="step-1" class="modal-step">
+                        <h3 class="font-semibold text-lg text-slate-700 mb-2 flex items-center gap-2"><i
+                                class="fa-solid fa-file-arrow-up text-slate-400"></i> <span>Select Document</span></h3>
+                        <p class="text-sm text-slate-500 mb-4">Choose the medical record PDF you want to process.</p>
+                        <input type="file" id="pdfFile" accept=".pdf"
+                            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer mb-6" />
+                        <p id="fileError" class="text-red-500 text-sm -mt-4 mb-4"></p>
+
+                        <h3 class="font-semibold text-lg text-slate-700 mt-8 mb-2 flex items-center gap-2"><i
+                                class="fa-solid fa-cog text-slate-400"></i> <span>Document Type</span></h3>
+                        <p class="text-sm text-slate-500 mb-4">Specify the type of document for better processing.</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <label
+                                class="p-4 border border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="documentType" value="military" class="mr-2" checked>
+                                <span class="font-medium">Military Personnel</span>
+                                <p class="text-xs text-slate-500 mt-1">For records where the patient is the service
+                                    member.</p>
+                            </label>
+                            <label
+                                class="p-4 border border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="documentType" value="dependent" class="mr-2">
+                                <span class="font-medium">Sponsored Dependent</span>
+                                <p class="text-xs text-slate-500 mt-1">For records where the patient is a
+                                    civilian/dependent.</p>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="step-2" class="modal-step">
+                        <h3 class="font-semibold text-lg text-slate-700 mb-2 flex items-center gap-2"><i
+                                class="fa-solid fa-microchip text-slate-400"></i> <span>Choose an AI Model</span></h3>
+                        <p class="text-sm text-slate-500 mb-6">Select the AI model that best fits your needs for this
+                            document.</p>
+                        <div class="space-y-4">
+                            <label
+                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="geminiModel" value="gemini-2.5-flash-lite" class="hidden">
+                                <div class="flex items-center gap-3 mb-1">
+                                    <span class="font-bold text-blue-600">Fast</span>
+                                    <span
+                                        class="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Most
+                                        Economical</span>
+                                </div>
+                                <p class="text-sm text-slate-600">Quickest processing for standard, clearly-written
+                                    documents. Ideal for high-volume tasks.</p>
+                            </label>
+                            <label
+                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="geminiModel" value="gemini-2.5-flash" class="hidden" checked>
+                                <div class="flex items-center gap-3 mb-1">
+                                    <span class="font-bold text-blue-600">Accurate</span>
+                                    <span
+                                        class="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Balanced
+                                        Cost</span>
+                                </div>
+                                <p class="text-sm text-slate-600">A balanced model providing high accuracy with good
+                                    performance. Recommended for most documents.</p>
+                            </label>
+                            <label
+                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+                                <input type="radio" name="geminiModel" value="gemini-2.5-pro" class="hidden">
+                                <div class="flex items-center gap-3 mb-1">
+                                    <span class="font-bold text-blue-600">Heavy-Duty</span>
+                                    <span
+                                        class="text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded-full">Highest
+                                        Cost</span>
+                                </div>
+                                <p class="text-sm text-slate-600">The most powerful model for complex documents with
+                                    dense handwriting or poor quality scans.</p>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="step-3" class="modal-step">
+                        <div class="text-center py-12">
+                            <svg class="animate-spin h-12 w-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <p class="text-lg font-semibold text-slate-700 mt-6">Processing Document...</p>
+                            <p class="text-sm text-slate-500">The AI is extracting information. Please wait.</p>
+                        </div>
+                    </div>
+
+                    <div id="step-4" class="modal-step">
+                        <div class="text-center py-12">
+                            <i class="fa-solid fa-check-circle text-6xl text-green-500"></i>
+                            <p class="text-lg font-semibold text-slate-700 mt-6">Extraction Complete</p>
+                            <p class="text-sm text-slate-500">The extracted data is ready for your review.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 border-t border-slate-200 flex justify-end gap-3">
+                    <button id="backBtn"
+                        class="px-3 py-1.5 text-sm rounded-md bg-slate-200 text-slate-700 font-medium hover:bg-slate-300 transition-colors hidden mr-auto">
+                        Back
+                    </button>
+                    <button id="cancelBtn"
+                        class="px-3 py-1.5 text-sm rounded-md bg-slate-200 text-slate-700 font-medium hover:bg-slate-300 transition-colors">Cancel</button>
+                    <button id="primaryBtn"
+                        class="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-center">Next:
+                        Select Model</button>
                 </div>
             </div>
         </div>
-        <div id="loadingOverlay"
-            class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div class="bg-white rounded-lg shadow-xl p-8 flex flex-col items-center gap-4 w-full max-w-sm">
-                <svg class="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                </svg>
-                <p class="text-lg font-semibold text-slate-700">Processing Document...</p>
-                <p class="text-sm text-slate-500">Please wait, this may take a moment.</p>
-            </div>
-        </div>
-
-        <footer class="text-center py-6 text-slate-400 text-sm">
-            <p>&copy; 2025 Boveda Patient Records Module. All Rights Reserved.</p>
-            <p>Powered by Cubeworks Technology Consulting and Solutions, Inc.</p>
-        </footer>
     </div>
+
+    <footer class="text-center py-6 text-slate-400 text-sm">
+        <p>&copy; 2025 Boveda Patient Records Module. All Rights Reserved.</p>
+        <p>Powered by Cubeworks Technology Consulting and Solutions, Inc.</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>

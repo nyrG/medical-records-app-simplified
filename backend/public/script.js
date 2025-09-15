@@ -7,20 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let totalPatients = 0;
     let rowsPerPage = 10;
     let selectedPatientIds = new Set();
-    let sortBy = 'updated_at'; // Change from 'name'
-    let sortOrder = 'DESC';   // Change from 'ASC'
+    let sortBy = 'updated_at';
+    let sortOrder = 'DESC';
     let filterCategory = '';
+    let modalCurrentStep = 1;
+    const modalTotalSteps = 4;
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
-    const currentPatientName = document.getElementById('currentPatientName');
     const recordContainer = document.getElementById('recordContainer');
     const newPatientBtn = document.getElementById('newPatientBtn');
     const saveIcon = document.getElementById('saveIcon');
     const saveBtnText = document.getElementById('saveBtnText');
     const uploadModal = document.getElementById('uploadModal');
-    const closeModalBtn = document.getElementById('closeModalBtn');
-    const processPdfBtn = document.getElementById('processPdfBtn');
     const pdfFileInput = document.getElementById('pdfFile');
     const fileError = document.getElementById('fileError');
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -41,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const categoryFilterMenu = document.getElementById('categoryFilterMenu');
     const dashboardTabs = document.getElementById('dashboardTabs');
     const dashboardStatsContainer = document.getElementById('dashboardStatsContainer');
+    const primaryBtn = document.getElementById('primaryBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const stepItems = document.querySelectorAll('.step-item');
+    const backBtn = document.getElementById('backBtn');
 
     // --- API Functions ---
     const API = {
@@ -120,9 +123,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
-    newPatientBtn.addEventListener('click', () => uploadModal.classList.remove('hidden'));
-    closeModalBtn.addEventListener('click', () => { uploadModal.classList.add('hidden'); pdfFileInput.value = ''; fileError.textContent = ''; });
-    processPdfBtn.addEventListener('click', handlePdfUpload);
+    newPatientBtn.addEventListener('click', () => {
+        modalCurrentStep = 1;
+        updateModalUI();
+        // MODIFIED: Use animation classes to open
+        uploadModal.classList.remove('hidden');
+        uploadModal.classList.add('modal-entering');
+        uploadModal.classList.remove('modal-exiting');
+    });
     recordContainer.addEventListener('click', function (e) {
         // Handle "Add Consultation"
         if (isEditMode && e.target?.id === 'addConsultationBtn') {
@@ -312,35 +320,134 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    primaryBtn.addEventListener('click', () => {
+        if (modalCurrentStep === 1) { // Move from Upload to Configure
+            const file = pdfFileInput.files[0];
+            if (!file) {
+                fileError.textContent = 'Please select a file before proceeding.';
+                return;
+            }
+            fileError.textContent = '';
+            modalCurrentStep++;
+            updateModalUI();
+        } else if (modalCurrentStep === 2) { // Move from Configure to Process
+            modalCurrentStep++;
+            updateModalUI();
+            handlePdfUploadAndProcess(); // This now starts the async API call
+        } else if (modalCurrentStep === 4) { // Final step, go to review page
+            uploadModal.classList.add('hidden');
+            selectPatient(null); // This opens the detail view with the new data
+        }
+    });
+
+    cancelBtn.addEventListener('click', () => {
+        if (modalCurrentStep === 3) return;
+
+        // MODIFIED: Use animation classes to close
+        uploadModal.classList.add('modal-exiting');
+        uploadModal.classList.remove('modal-entering');
+
+        setTimeout(() => {
+            uploadModal.classList.add('hidden');
+            pdfFileInput.value = '';
+            fileError.textContent = '';
+            modalCurrentStep = 1;
+            updateModalUI();
+        }, 200); // Wait for the animation to finish
+    });
+
+    backBtn.addEventListener('click', () => {
+        if (modalCurrentStep > 1) {
+            modalCurrentStep--;
+            updateModalUI();
+        }
+    });
+
     document.getElementById('homeLink').addEventListener('click', (e) => {
         e.preventDefault();
         fetchAndDisplayPatients(1);
     });
 
+    const updateModalUI = () => {
+        stepItems.forEach(item => {
+            const step = parseInt(item.dataset.step, 10);
+            const circle = item.querySelector('.step-circle');
+
+            item.classList.remove('active', 'completed');
+
+            if (step < modalCurrentStep) {
+                item.classList.add('completed');
+                circle.innerHTML = `<i class="fa-solid fa-check text-sm"></i>`;
+            } else if (step === modalCurrentStep) {
+                item.classList.add('active');
+                circle.textContent = step;
+            } else {
+                circle.textContent = step;
+            }
+        });
+
+        // Update content panels
+        document.querySelectorAll('.modal-step').forEach(panel => panel.classList.remove('active'));
+        const activePanel = document.getElementById(`step-${modalCurrentStep}`);
+        if (activePanel) activePanel.classList.add('active');
+
+        // --- MODIFIED: Button State Logic ---
+        primaryBtn.disabled = false;
+        primaryBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
+        primaryBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+
+        // Show/hide buttons based on step
+        backBtn.classList.toggle('hidden', modalCurrentStep !== 2);
+        cancelBtn.classList.toggle('hidden', modalCurrentStep === 3 || modalCurrentStep === 4); // Hide on step 3 and 4
+
+        switch (modalCurrentStep) {
+            case 1:
+                primaryBtn.textContent = 'Next';
+                break;
+            case 2:
+                primaryBtn.textContent = 'Upload & Process';
+                break;
+            case 3:
+                primaryBtn.textContent = 'Processing...';
+                primaryBtn.disabled = true;
+                primaryBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                primaryBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+                break;
+            case 4:
+                primaryBtn.textContent = 'Review & Create Patient';
+                break;
+        }
+    };
+
     // --- Handler Functions ---
-    async function handlePdfUpload() {
+    async function handlePdfUploadAndProcess() {
         const file = pdfFileInput.files[0];
         fileError.textContent = '';
         if (!file || file.type !== 'application/pdf') {
             fileError.textContent = 'Please select a valid PDF file.';
+            modalCurrentStep = 1; // Go back to step 1 on error
+            updateModalUI();
             return;
         }
 
+        // The UI is already showing a loading state from the modal logic
         const formData = new FormData();
         formData.append('file', file);
-
-        loadingOverlay.classList.remove('hidden');
-        uploadModal.classList.add('hidden');
+        // NOTE: Here you would also append the selected model and document type
+        // const selectedModel = document.querySelector('input[name="geminiModel"]:checked').value;
+        // formData.append('model', selectedModel);
 
         try {
             selectedPatient = await API.processPdf(formData);
             isEditMode = true;
-            selectPatient(null); // Switch to detail view for the new patient
+            modalCurrentStep++; // Move to step 4 (Review)
+            updateModalUI();
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
-        } finally {
-            loadingOverlay.classList.add('hidden');
-            pdfFileInput.value = '';
+            // Reset on error
+            uploadModal.classList.add('hidden');
+            modalCurrentStep = 1;
+            updateModalUI();
         }
     }
 
