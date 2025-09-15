@@ -7,6 +7,20 @@ import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 
+/**
+ * Converts a string to Title Case.
+ * @param str The string to convert.
+ * @returns The Title Cased string.
+ */
+const toTitleCase = (str: string | null | undefined): string | null => {
+  if (!str) return null;
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 @Injectable()
 export class PatientsService {
   constructor(
@@ -16,21 +30,47 @@ export class PatientsService {
 
   create(createPatientDto: CreatePatientDto): Promise<Patient> {
     const patient = this.patientsRepository.create(createPatientDto);
-
-    // **NEW**: Safety check to ensure critical data exists before saving
     const info = createPatientDto.patient_info as any;
+    const sponsorInfo = createPatientDto.sponsor_info as any;
+    const encounters = createPatientDto.medical_encounters as any;
+
     if (!info || !info.full_name || !info.full_name.first_name || !info.full_name.last_name) {
       throw new BadRequestException('Patient data is incomplete. A first and last name are required to save a new record.');
     }
 
-    // This part remains the same
+    // --- START: EXPANDED TITLE CASE FORMATTING ---
+    // Format patient name
+    info.full_name.first_name = toTitleCase(info.full_name.first_name);
+    info.full_name.last_name = toTitleCase(info.full_name.last_name);
+
+    // Format patient address
+    if (info.address) {
+      info.address.house_no_street = toTitleCase(info.address.house_no_street);
+      info.address.barangay = toTitleCase(info.address.barangay);
+      info.address.city_municipality = toTitleCase(info.address.city_municipality);
+      info.address.province = toTitleCase(info.address.province);
+    }
+
+    // Format sponsor name
+    if (sponsorInfo && sponsorInfo.sponsor_name) {
+      sponsorInfo.sponsor_name.first_name = toTitleCase(sponsorInfo.sponsor_name.first_name);
+      sponsorInfo.sponsor_name.last_name = toTitleCase(sponsorInfo.sponsor_name.last_name);
+    }
+
+    // Format attending physician in consultations
+    if (encounters && encounters.consultations) {
+      encounters.consultations.forEach((consultation: any) => {
+        consultation.attending_physician = toTitleCase(consultation.attending_physician);
+      });
+    }
+    // --- END: EXPANDED TITLE CASE FORMATTING ---
+
     patient.name = [info.full_name.first_name, info.full_name.last_name]
       .filter(Boolean)
       .join(' ');
 
-    // Explicitly set to null if undefined to match the entity and database
-    patient.sponsor_info = createPatientDto.sponsor_info ?? null;
-    patient.medical_encounters = createPatientDto.medical_encounters ?? null;
+    patient.sponsor_info = sponsorInfo ?? null;
+    patient.medical_encounters = encounters ?? null;
     patient.summary = createPatientDto.summary ?? null;
 
     return this.patientsRepository.save(patient);
@@ -129,15 +169,44 @@ export class PatientsService {
 
   async update(id: number, updatePatientDto: UpdatePatientDto): Promise<Patient> {
     const patient = await this.findOne(id);
+    const info = updatePatientDto.patient_info as any;
+    const sponsorInfo = updatePatientDto.sponsor_info as any;
+    const encounters = updatePatientDto.medical_encounters as any;
 
-    if (updatePatientDto.patient_info) {
-      const info = updatePatientDto.patient_info as any;
+    // --- START: EXPANDED TITLE CASE FORMATTING ---
+    if (info) {
+      // Format patient name
       if (info.full_name) {
+        info.full_name.first_name = toTitleCase(info.full_name.first_name);
+        info.full_name.last_name = toTitleCase(info.full_name.last_name);
         patient.name = [info.full_name.first_name, info.full_name.last_name]
           .filter(Boolean)
           .join(' ');
       }
+      // Format patient address
+      if (info.address) {
+        info.address.house_no_street = toTitleCase(info.address.house_no_street);
+        info.address.barangay = toTitleCase(info.address.barangay);
+        info.address.city_municipality = toTitleCase(info.address.city_municipality);
+        info.address.province = toTitleCase(info.address.province);
+      }
     }
+
+    // Format sponsor name
+    if (sponsorInfo && sponsorInfo.sponsor_name) {
+      sponsorInfo.sponsor_name.first_name = toTitleCase(sponsorInfo.sponsor_name.first_name);
+      sponsorInfo.sponsor_name.last_name = toTitleCase(sponsorInfo.sponsor_name.last_name);
+    }
+
+    // Format attending physician in consultations
+    if (encounters && encounters.consultations) {
+      encounters.consultations.forEach((consultation: any) => {
+        if (consultation.attending_physician) {
+          consultation.attending_physician = toTitleCase(consultation.attending_physician);
+        }
+      });
+    }
+    // --- END: EXPANDED TITLE CASE FORMATTING ---
 
     const updatedPatient = this.patientsRepository.merge(patient, updatePatientDto);
 

@@ -13,15 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
-    const recordContainer = document.getElementById('recordContainer');
-    const controlsContainer = document.getElementById('controlsContainer');
     const currentPatientName = document.getElementById('currentPatientName');
+    const recordContainer = document.getElementById('recordContainer');
     const newPatientBtn = document.getElementById('newPatientBtn');
-    const editBtn = document.getElementById('editBtn');
-    const saveBtn = document.getElementById('saveBtn');
     const saveIcon = document.getElementById('saveIcon');
     const saveBtnText = document.getElementById('saveBtnText');
-    const deleteBtn = document.getElementById('deleteBtn');
     const uploadModal = document.getElementById('uploadModal');
     const closeModalBtn = document.getElementById('closeModalBtn');
     const processPdfBtn = document.getElementById('processPdfBtn');
@@ -30,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const mainContent = document.querySelector('.main-content');
     const patientDetailContainer = document.getElementById('patientDetailContainer');
-    const backToListBtn = document.getElementById('backToListBtn');
     const recordCount = document.getElementById('recordCount');
     const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
     const deleteSelectedCount = document.getElementById('deleteSelectedCount');
@@ -128,10 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newPatientBtn.addEventListener('click', () => uploadModal.classList.remove('hidden'));
     closeModalBtn.addEventListener('click', () => { uploadModal.classList.add('hidden'); pdfFileInput.value = ''; fileError.textContent = ''; });
     processPdfBtn.addEventListener('click', handlePdfUpload);
-    editBtn.addEventListener('click', toggleEditMode);
-    saveBtn.addEventListener('click', handleSaveChanges);
-    deleteBtn.addEventListener('click', handleDeletePatient);
-    backToListBtn.addEventListener('click', () => fetchAndDisplayPatients(currentPage));
     recordContainer.addEventListener('click', function (e) {
         // Handle "Add Consultation"
         if (isEditMode && e.target?.id === 'addConsultationBtn') {
@@ -215,6 +206,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     patientDetailContainer.addEventListener('click', function (e) {
+        const actionButton = e.target.closest('#actionButtons button');
+        if (actionButton) {
+            switch (actionButton.id) {
+                case 'backToListBtn':
+                    fetchAndDisplayPatients(currentPage);
+                    return;
+                case 'editBtn':
+                    toggleEditMode();
+                    return;
+                case 'saveBtn':
+                    handleSaveChanges();
+                    return;
+                case 'deleteBtn':
+                    handleDeletePatient();
+                    return;
+            }
+        }
+
         const activeTabId = document.querySelector('#detailTabs .dashboard-tab.active')?.dataset.tab || 'summary';
 
         // --- Handle Add Buttons ---
@@ -327,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedPatient = await API.processPdf(formData);
             isEditMode = true;
             selectPatient(null); // Switch to detail view for the new patient
-            currentPatientName.textContent = 'Review & Create New Patient';
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
         } finally {
@@ -510,14 +518,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateButtonState() {
+        // This check is now more important
         if (!selectedPatient) {
-            controlsContainer.classList.add('hidden');
             return;
         }
 
+        // Get elements dynamically each time the function is called
+        const editBtn = document.getElementById('editBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
         const editBtnText = document.getElementById('editBtnText');
         const editIcon = document.getElementById('editIcon');
         const cancelIcon = document.getElementById('cancelIcon');
+        const saveIcon = document.getElementById('saveIcon');
+        const saveBtnText = document.getElementById('saveBtnText');
+
+        // Add a guard to ensure elements exist before trying to modify them
+        if (!editBtn || !saveBtn || !deleteBtn || !editBtnText || !editIcon || !cancelIcon) {
+            return;
+        }
 
         if (isEditMode) {
             editBtnText.textContent = 'Cancel';
@@ -699,8 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchAndDisplayPatients(currentPage);
             return;
         }
-        // This correctly targets the h2 inside the controls container
-        currentPatientName.textContent = `Viewing: ${selectedPatient.name || 'New Patient'}`;
 
         // Get the new, dedicated container for our content
         const detailContentContainer = document.getElementById('patientDetailContent');
@@ -999,7 +1016,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        mainContent.innerHTML = `<div class="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
+        const pi = patient.patient_info;
+        const patientMI = pi?.full_name?.middle_initial ? `${pi.full_name.middle_initial}.` : '';
+        const fullName = [pi?.full_name?.first_name, patientMI, pi?.full_name?.last_name].filter(Boolean).join(' ').trim();
+
+        const headerTitle = selectedPatient.id
+            ? `Viewing: ${fullName || 'New Patient'}`
+            : 'Review & Create New Patient';
+
+        const headerHTML = `
+            <div class="bg-white p-4 rounded-lg border border-slate-200 mb-4 flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-600">${headerTitle}</h2>
+                <div id="actionButtons" class="flex gap-2">
+                    <button id="backToListBtn" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left"></i>
+                        <span>Back to List</span>
+                    </button>
+                    <button id="editBtn" class="btn btn-primary">
+                        <i id="editIcon" class="fa-solid fa-pencil"></i>
+                        <i id="cancelIcon" class="fa-solid fa-xmark hidden"></i>
+                        <span id="editBtnText">Edit Data</span>
+                    </button>
+                    <button id="saveBtn" class="btn btn-success hidden">
+                        <i id="saveIcon" class="fa-solid fa-check"></i>
+                        <span id="saveBtnText">Save Changes</span>
+                    </button>
+                    <button id="deleteBtn" class="btn btn-danger">
+                        <i class="fa-solid fa-trash"></i>
+                        <span>Delete</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        mainContent.innerHTML = headerHTML + `<div class="bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col">
                                     <div class="border-b border-slate-200">
                                         <nav id="detailTabs" class="flex gap-4 -mb-px px-4 sm:px-6">
                                             <button data-tab="summary" class="dashboard-tab active">Summary</button>
@@ -1243,9 +1293,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                                 <div class="detail-card-body">
                                     ${isEditMode ?
-                                        `<div>${createEditItem('Test Type', lab.test_type, `${basePath}.test_type`)}</div>` : 
-                                        `<h4 class="text-lg font-semibold text-green-600 mb-4">${lab.test_type || 'Lab Report'}</h4>`
-                                    }
+                        `<div>${createEditItem('Test Type', lab.test_type, `${basePath}.test_type`)}</div>` :
+                        `<h4 class="text-lg font-semibold text-green-600 mb-4">${lab.test_type || 'Lab Report'}</h4>`
+                    }
                                     <table class="min-w-full text-sm">
                                         <thead class="bg-slate-50">
                                             <tr>
@@ -1257,23 +1307,23 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </thead>
                                         <tbody class="divide-y divide-slate-200">
                                             ${(lab.results || []).map((res, resultIndex) => {
-                                                if (isEditMode) {
-                                                    const resultBasePath = `${basePath}.results.${resultIndex}`;
-                                                    return `<tr>
+                        if (isEditMode) {
+                            const resultBasePath = `${basePath}.results.${resultIndex}`;
+                            return `<tr>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.test_name" value="${res.test_name || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.value" value="${res.value || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.unit" value="${res.unit || ''}"></td>
                                                                 <td class="px-2 py-1"><input type="text" class="edit-input" data-path="${resultBasePath}.reference_range" value="${res.reference_range || ''}"></td>
                                                             </tr>`;
-                                                } else {
-                                                    return `<tr>
+                        } else {
+                            return `<tr>
                                                                 <td class="px-4 py-2 font-medium text-slate-800">${res.test_name || ''}</td>
                                                                 <td class="px-4 py-2">${res.value || ''}</td>
                                                                 <td class="px-4 py-2">${res.unit || ''}</td>
                                                                 <td class="px-4 py-2 text-slate-500">${res.reference_range || ''}</td>
                                                             </tr>`;
-                                                }
-                                            }).join('')}
+                        }
+                    }).join('')}
                                         </tbody>
                                     </table>
                                 </div>
