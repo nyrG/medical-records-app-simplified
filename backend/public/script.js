@@ -15,19 +15,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
-    const recordContainer = document.getElementById('recordContainer');
     const newPatientBtn = document.getElementById('newPatientBtn');
-    const saveIcon = document.getElementById('saveIcon');
-    const saveBtnText = document.getElementById('saveBtnText');
     const uploadModal = document.getElementById('uploadModal');
     const pdfFileInput = document.getElementById('pdfFile');
     const fileError = document.getElementById('fileError');
     const dropZone = document.getElementById('dropZone');
     const browseBtn = document.getElementById('browseBtn');
-    const fileNameDisplay = document.getElementById('fileNameDisplay');
-
-    
-    const loadingOverlay = document.getElementById('loadingOverlay');
+    const uploadPrompt = document.getElementById('uploadPrompt');
+    const filePreview = document.getElementById('filePreview');
+    const previewFileName = document.getElementById('previewFileName');
+    const previewFileSize = document.getElementById('previewFileSize');
+    const removeFileBtn = document.getElementById('removeFileBtn');
     const mainContent = document.querySelector('.main-content');
     const patientDetailContainer = document.getElementById('patientDetailContainer');
     const recordCount = document.getElementById('recordCount');
@@ -136,28 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadModal.classList.add('modal-entering');
         uploadModal.classList.remove('modal-exiting');
     });
-    recordContainer.addEventListener('click', function (e) {
-        // Handle "Add Consultation"
-        if (isEditMode && e.target?.id === 'addConsultationBtn') {
-            if (!selectedPatient.medical_encounters) selectedPatient.medical_encounters = {};
-            if (!selectedPatient.medical_encounters.consultations) selectedPatient.medical_encounters.consultations = [];
-
-            selectedPatient.medical_encounters.consultations.push({ vitals: {} });
-            renderPatientDetails();
-        }
-
-        // Handle "Delete Consultation"
-        const deleteBtn = e.target.closest('.delete-consultation-btn');
-        if (isEditMode && deleteBtn) {
-            const index = parseInt(deleteBtn.dataset.consultationIndex, 10);
-            if (!isNaN(index) && selectedPatient.medical_encounters?.consultations) {
-                // Remove the consultation from the array
-                selectedPatient.medical_encounters.consultations.splice(index, 1);
-                // Re-render the view to show the change
-                renderPatientDetails();
-            }
-        }
-    });
     patientListContainer.addEventListener('change', handleCheckboxChange);
     deleteSelectedBtn.addEventListener('click', handleDeleteSelected);
     let debounceTimer;
@@ -170,18 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
     sortOrderBtn.addEventListener('click', handleSortOrderToggle);
     sortDropdownBtn.addEventListener('click', () => sortDropdownMenu.classList.toggle('hidden'));
     sortDropdownMenu.addEventListener('click', handleSortByChange);
-    window.addEventListener('click', (e) => {
-        if (!sortDropdownBtn.contains(e.target)) {
-            sortDropdownMenu.classList.add('hidden');
-        }
-    });
     categoryFilterBtn.addEventListener('click', () => categoryFilterMenu.classList.toggle('hidden'));
     categoryFilterMenu.addEventListener('click', handleFilterChange);
     window.addEventListener('click', (e) => {
         if (!sortDropdownBtn.contains(e.target)) {
             sortDropdownMenu.classList.add('hidden');
         }
-        // Add this new condition to hide the category menu as well
         if (!categoryFilterBtn.contains(e.target)) {
             categoryFilterMenu.classList.add('hidden');
         }
@@ -339,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             modalCurrentStep++;
             updateModalUI();
             handlePdfUploadAndProcess(); // This now starts the async API call
-        } else if (modalCurrentStep === 4) { // Final step, go to review page
+        } else if (modalCurrentStep === modalTotalSteps) { // Final step, go to review page
             uploadModal.classList.add('hidden');
             selectPatient(null); // This opens the detail view with the new data
         }
@@ -348,17 +318,15 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelBtn.addEventListener('click', () => {
         if (modalCurrentStep === 3) return;
 
-        // MODIFIED: Use animation classes to close
         uploadModal.classList.add('modal-exiting');
         uploadModal.classList.remove('modal-entering');
 
         setTimeout(() => {
             uploadModal.classList.add('hidden');
-            pdfFileInput.value = '';
-            fileError.textContent = '';
+            clearFile(); // MODIFIED: Call the new function here
             modalCurrentStep = 1;
             updateModalUI();
-        }, 200); // Wait for the animation to finish
+        }, 200);
     });
 
     backBtn.addEventListener('click', () => {
@@ -368,11 +336,45 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    browseBtn.addEventListener('click', () => pdfFileInput.click());
-    pdfFileInput.addEventListener('change', () => {
-        if (pdfFileInput.files.length > 0) {
-            handleFile(pdfFileInput.files[0]);
+    const formatBytes = (bytes, decimals = 2) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    };
+
+    const clearFile = () => {
+        pdfFileInput.value = ''; // This is the crucial part that clears the file
+        filePreview.classList.add('hidden');
+        uploadPrompt.classList.remove('hidden');
+        fileError.textContent = '';
+    };
+
+    const handleFile = (file) => {
+        fileError.textContent = '';
+        if (file && file.type === 'application/pdf') {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            pdfFileInput.files = dataTransfer.files;
+
+            previewFileName.textContent = file.name;
+            previewFileSize.textContent = formatBytes(file.size);
+
+            uploadPrompt.classList.add('hidden');
+            filePreview.classList.remove('hidden');
+        } else {
+            clearFile();
+            fileError.textContent = 'Invalid file. Please select a PDF.';
         }
+    };
+
+    browseBtn.addEventListener('click', () => pdfFileInput.click());
+    removeFileBtn.addEventListener('click', clearFile);
+
+    pdfFileInput.addEventListener('change', () => {
+        if (pdfFileInput.files.length > 0) handleFile(pdfFileInput.files[0]);
     });
 
     dropZone.addEventListener('dragover', (e) => {
@@ -388,25 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dropZone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropZone.classList.remove('border-blue-500', 'bg-blue-50');
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            handleFile(files[0]);
-        }
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
     });
-
-    const handleFile = (file) => {
-        fileError.textContent = '';
-        if (file && file.type === 'application/pdf') {
-            pdfFileInput.files = new DataTransfer().files; // Clear previous selection
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            pdfFileInput.files = dataTransfer.files;
-            fileNameDisplay.textContent = file.name;
-        } else {
-            fileNameDisplay.textContent = '';
-            fileError.textContent = 'Invalid file. Please select a PDF.';
-        }
-    };
 
     document.getElementById('homeLink').addEventListener('click', (e) => {
         e.preventDefault();
