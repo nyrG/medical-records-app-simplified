@@ -29,7 +29,7 @@ export class PatientsService {
       .join(' ');
 
     // Explicitly set to null if undefined to match the entity and database
-    patient.guardian_info = createPatientDto.guardian_info ?? null;
+    patient.sponsor_info = createPatientDto.sponsor_info ?? null;
     patient.medical_encounters = createPatientDto.medical_encounters ?? null;
     patient.summary = createPatientDto.summary ?? null;
 
@@ -112,14 +112,15 @@ export class PatientsService {
     const topDiagnoses = await this.patientsRepository.query(`
         SELECT diagnosis, COUNT(diagnosis) as count
         FROM patient, jsonb_array_elements_text(summary->'final_diagnosis') AS diagnosis
-        WHERE jsonb_typeof(summary->'final_diagnosis') = 'array'
+        WHERE jsonb_typeof(summary->'final_diagnosis') = 'array' AND deleted_at IS NULL
         GROUP BY diagnosis
         ORDER BY count DESC
         LIMIT 5;
     `);
 
+    // MODIFIED: Added "WHERE deleted_at IS NULL" to the query
     const avgAgeResult = await this.patientsRepository.query(
-      `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient`
+      `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient WHERE deleted_at IS NULL`
     );
     const averageAge = avgAgeResult[0]?.avgAge ? parseFloat(avgAgeResult[0].avgAge).toFixed(1) : 'N/A';
 

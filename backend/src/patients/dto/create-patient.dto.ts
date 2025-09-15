@@ -7,7 +7,7 @@ export class CreatePatientDto {
 
   @IsObject()
   @IsOptional()
-  guardian_info?: object;
+  sponsor_info?: object;
 
   @IsObject()
   @IsOptional()
