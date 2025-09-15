@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadModal = document.getElementById('uploadModal');
     const pdfFileInput = document.getElementById('pdfFile');
     const fileError = document.getElementById('fileError');
+    const dropZone = document.getElementById('dropZone');
+    const browseBtn = document.getElementById('browseBtn');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+    
     const loadingOverlay = document.getElementById('loadingOverlay');
     const mainContent = document.querySelector('.main-content');
     const patientDetailContainer = document.getElementById('patientDetailContainer');
@@ -362,6 +367,46 @@ document.addEventListener('DOMContentLoaded', () => {
             updateModalUI();
         }
     });
+
+    browseBtn.addEventListener('click', () => pdfFileInput.click());
+    pdfFileInput.addEventListener('change', () => {
+        if (pdfFileInput.files.length > 0) {
+            handleFile(pdfFileInput.files[0]);
+        }
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-500', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+
+    const handleFile = (file) => {
+        fileError.textContent = '';
+        if (file && file.type === 'application/pdf') {
+            pdfFileInput.files = new DataTransfer().files; // Clear previous selection
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            pdfFileInput.files = dataTransfer.files;
+            fileNameDisplay.textContent = file.name;
+        } else {
+            fileNameDisplay.textContent = '';
+            fileError.textContent = 'Invalid file. Please select a PDF.';
+        }
+    };
 
     document.getElementById('homeLink').addEventListener('click', (e) => {
         e.preventDefault();
