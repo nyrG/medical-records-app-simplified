@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let filterCategory = '';
     let modalCurrentStep = 1;
     const modalTotalSteps = 4;
+    let cancelTimer = null;
+    let cancelInterval = null;
 
     // --- DOM Elements ---
     const patientListContainer = document.getElementById('patientListContainer');
@@ -312,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (modalCurrentStep === modalTotalSteps) { // Final step, go to review page
             uploadModal.classList.add('hidden');
             selectPatient(null); // This opens the detail view with the new data
+            clearFile();
         }
     });
 
@@ -399,6 +402,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const updateModalUI = () => {
+        // Clear any existing timer when the UI updates
+        if (cancelInterval) {
+            clearInterval(cancelInterval);
+            cancelInterval = null;
+        }
+
         stepItems.forEach(item => {
             const step = parseInt(item.dataset.step, 10);
             const circle = item.querySelector('.step-circle');
@@ -426,9 +435,14 @@ document.addEventListener('DOMContentLoaded', () => {
         primaryBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
         primaryBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
 
-        // Show/hide buttons based on step
         backBtn.classList.toggle('hidden', modalCurrentStep !== 2);
-        cancelBtn.classList.toggle('hidden', modalCurrentStep === 3 || modalCurrentStep === 4); // Hide on step 3 and 4
+        cancelBtn.classList.toggle('hidden', modalCurrentStep === 4);
+
+        // Default state for cancel button - revert to original style
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = 'Cancel'; // Reset text
+        cancelBtn.classList.remove('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+        cancelBtn.classList.add('bg-slate-200', 'hover:bg-slate-300');
 
         switch (modalCurrentStep) {
             case 1:
@@ -440,8 +454,44 @@ document.addEventListener('DOMContentLoaded', () => {
             case 3:
                 primaryBtn.textContent = 'Processing...';
                 primaryBtn.disabled = true;
+                // --- REVERTED: Original darker disabled style for Primary button ---
                 primaryBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 primaryBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
+
+                // --- START: New Logic for Step 3 ---
+                // 1. Populate the summary
+                const file = pdfFileInput.files[0];
+                const docType = document.querySelector('input[name="documentType"]:checked').value;
+                const modelInput = document.querySelector('input[name="geminiModel"]:checked');
+                const modelLabel = modelInput.closest('label').querySelector('.font-bold').textContent;
+
+                document.getElementById('summary-file-name').textContent = file ? file.name : 'N/A';
+                document.getElementById('summary-doc-type').textContent = docType.charAt(0).toUpperCase() + docType.slice(1);
+                document.getElementById('summary-ai-model').textContent = modelLabel;
+
+                // 2. Disable cancel button with LIGHTER grey and start countdown
+                cancelBtn.disabled = true;
+                cancelBtn.classList.add('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+                cancelBtn.classList.remove('bg-slate-200', 'hover:bg-slate-300');
+
+                let countdown = 30;
+                cancelBtn.textContent = `Cancel (${countdown}s)`;
+
+                cancelInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        cancelBtn.textContent = `Cancel (${countdown}s)`;
+                    } else {
+                        clearInterval(cancelInterval);
+                        cancelInterval = null;
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = 'Cancel';
+                        // Revert back to original active style
+                        cancelBtn.classList.remove('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
+                        cancelBtn.classList.add('bg-slate-200', 'hover:bg-slate-300');
+                    }
+                }, 1000); // Update every second
+                // --- END: New Logic for Step 3 ---
                 break;
             case 4:
                 primaryBtn.textContent = 'Review & Create Patient';
@@ -460,21 +510,31 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // The UI is already showing a loading state from the modal logic
         const formData = new FormData();
         formData.append('file', file);
-        // NOTE: Here you would also append the selected model and document type
-        // const selectedModel = document.querySelector('input[name="geminiModel"]:checked').value;
-        // formData.append('model', selectedModel);
+
+        // Get the selected model and append it
+        const selectedModelInput = document.querySelector('input[name="geminiModel"]:checked');
+        const selectedModel = selectedModelInput.value;
+        formData.append('model', selectedModel);
+
+        // Get the selected document type and append it
+        const selectedDocumentType = document.querySelector('input[name="documentType"]:checked').value;
+        formData.append('documentType', selectedDocumentType);
+
+        const modelLabel = selectedModelInput.closest('label').querySelector('.font-bold').textContent;
 
         try {
             selectedPatient = await API.processPdf(formData);
             isEditMode = true;
             modalCurrentStep++; // Move to step 4 (Review)
             updateModalUI();
+
+            console.log(`[Extraction Log] File processed with '${modelLabel}' (${selectedModel}) model.`);
+            console.log(`[Frontend] Document Type Selected: ${selectedDocumentType}`);
+
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
-            // Reset on error
             uploadModal.classList.add('hidden');
             modalCurrentStep = 1;
             updateModalUI();

@@ -83,7 +83,7 @@ export class ExtractionService {
     return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g, "");
   }
 
-  async extractDataFromPdf(file: Express.Multer.File): Promise<any> {
+  async extractDataFromPdf(file: Express.Multer.File, modelName: string, documentType: string): Promise<any> {
     const schema = {
       "patient_info": {
         "patient_record_number": null,
@@ -92,11 +92,11 @@ export class ExtractionService {
         "age": null,
         "sex": null,
         "address": {
-            "house_no_street": null,
-            "barangay": null,
-            "city_municipality": null,
-            "province": null,
-            "zip_code": null
+          "house_no_street": null,
+          "barangay": null,
+          "city_municipality": null,
+          "province": null,
+          "zip_code": null
         },
         "category": null,
         "rank": null,
@@ -142,6 +142,15 @@ export class ExtractionService {
       "OCS", "RES", "ODH", "EDH"
     ];
 
+    let documentTypeInstruction = `5. **Documents with Sponsors**: If a sponsor is present in the document, ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'sponsor_info' object. The corresponding fields in 'patient_info' should be null. Only if the PATIENT is the service member should these fields be filled in 'patient_info'.`;
+
+    if (documentType === 'military') {
+        documentTypeInstruction = `5. **This is a Military Personnel document**: ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'patient_info' object. The 'sponsor_info' object should be used for dependent information if present, but should not contain the primary military details.`;
+    } else if (documentType === 'dependent') {
+        // --- MODIFIED: STRONGER INSTRUCTION ---
+        documentTypeInstruction = `5. **CRITICAL INSTRUCTION: This is a Sponsored Dependent document.** The patient is NOT the military member. ALL military information (rank, afpsn, branch of service, unit assignment) found anywhere in this document MUST be placed in the 'sponsor_info' object. The corresponding military fields in the 'patient_info' object MUST be set to null. There are no exceptions to this rule.`;
+    }
+
     const prompt = `
       You are an expert AI medical data processor. Analyze the provided PDF, including all handwritten text, and convert it into a single, comprehensive JSON object.
 
@@ -150,7 +159,7 @@ export class ExtractionService {
       2.  **Data Quality and Coherence**: All extracted text must be proofread to correct OCR errors, ensure it is coherent, and written in English.
       3.  **Handle Document Layout**: Pay close attention to the document's layout. Often, the value for a field is written on the line ABOVE its corresponding label (e.g., the name "MEDINA" appears above the label "LAST NAME").
       4.  **No Extra Text**: Your final output must only be the raw JSON object.
-      5.  **Documents with Sponsors**: If a sponsor is present in the document, ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'sponsor_info' object. The corresponding fields in 'patient_info' should be null. Only if the PATIENT is the service member should these fields be filled in 'patient_info'.
+      ${documentTypeInstruction}
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
       - **branch_of_service**: This may be abbreviated as "br of svc" in the document.
@@ -183,7 +192,7 @@ export class ExtractionService {
     `;
 
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
+      model: modelName,
       safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
     });
 
@@ -207,7 +216,14 @@ export class ExtractionService {
 
     try {
       const parsedData = JSON.parse(sanitizedJson);
-      return this.cleanData(parsedData);
+      const cleanedData = this.cleanData(parsedData);
+      
+      cleanedData.extraction_info = {
+        model_used: modelName,
+        processed_at: new Date().toISOString()
+      };
+
+      return cleanedData;
     } catch (error) {
       console.error('Failed to parse JSON from Gemini:', error, 'Raw Text:', sanitizedJson);
       throw new Error('Could not parse the extracted data.');

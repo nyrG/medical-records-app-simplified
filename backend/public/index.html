@@ -242,7 +242,8 @@
                         <div class="space-y-4">
                             <label
                                 class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                                <input type="radio" name="geminiModel" value="gemini-2.5-flash-lite" class="hidden">
+                                <input type="radio" name="geminiModel" value="gemini-2.5-flash-lite" class="hidden"
+                                    checked>
                                 <div class="flex items-center gap-3 mb-1">
                                     <span class="font-bold text-blue-600">Fast</span>
                                     <span
@@ -254,7 +255,7 @@
                             </label>
                             <label
                                 class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                                <input type="radio" name="geminiModel" value="gemini-2.5-flash" class="hidden" checked>
+                                <input type="radio" name="geminiModel" value="gemini-2.5-flash" class="hidden">
                                 <div class="flex items-center gap-3 mb-1">
                                     <span class="font-bold text-blue-600">Reliable</span>
                                     <span
@@ -280,7 +281,7 @@
                     </div>
 
                     <div id="step-3" class="modal-step">
-                        <div class="text-center py-12">
+                        <div class="text-center py-8">
                             <svg class="animate-spin h-12 w-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg"
                                 fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
@@ -291,6 +292,21 @@
                             </svg>
                             <p class="text-lg font-semibold text-slate-700 mt-6">Processing Document...</p>
                             <p class="text-sm text-slate-500">The AI is extracting information. Please wait.</p>
+
+                            <div id="processing-summary"
+                                class="mt-6 text-left max-w-sm mx-auto bg-slate-100 border border-slate-200 rounded-lg p-3 text-sm">
+                                <h4 class="font-semibold text-slate-600 mb-2 border-b border-slate-300 pb-1">Upload
+                                    Configuration</h4>
+                                <div class="space-y-1">
+                                    <p><strong class="font-medium text-slate-500 w-28 inline-block">File:</strong> <span
+                                            id="summary-file-name" class="text-slate-700"></span></p>
+                                    <p><strong class="font-medium text-slate-500 w-28 inline-block">Document
+                                            Type:</strong> <span id="summary-doc-type" class="text-slate-700"></span>
+                                    </p>
+                                    <p><strong class="font-medium text-slate-500 w-28 inline-block">AI Model:</strong>
+                                        <span id="summary-ai-model" class="text-slate-700"></span></p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

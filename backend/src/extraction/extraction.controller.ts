@@ -1,6 +1,6 @@
 // backend/src/extraction/extraction.controller.ts
 
-import { Controller, Post, UploadedFile, UseInterceptors, BadRequestException, UseFilters } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, BadRequestException, UseFilters, Body } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExtractionService } from './extraction.service';
 import { GeminiApiExceptionFilter } from './gemini-api.filter'; // 1. Import the filter
@@ -12,12 +12,15 @@ export class ExtractionController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  async uploadFile(@UploadedFile() file: Express.Multer.File) {
+  async uploadFile(
+    @UploadedFile() file: Express.Multer.File, 
+    @Body('model') model: string,
+    @Body('documentType') documentType: string // Add documentType here
+  ) {
     if (!file) {
       throw new BadRequestException('No file uploaded.');
     }
     
-    // CHANGE THIS LINE: Pass the entire 'file' object
-    return this.extractionService.extractDataFromPdf(file);
+    return this.extractionService.extractDataFromPdf(file, model || 'gemini-2.5-flash-lite', documentType);
   }
 }
