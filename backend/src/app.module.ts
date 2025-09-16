@@ -19,13 +19,23 @@ import { ExtractionModule } from './extraction/extraction.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      database: process.env.POSTGRES_DB,
+      // MODIFIED: Use the connection URL here as well
+      url: process.env.DATABASE_URL,
+      ssl: {
+        rejectUnauthorized: false, // Required for Neon
+      },
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true,
+
+      // Local development configuration
+      // type: 'postgres',
+      // host: 'localhost',
+      // port: 5432,
+      // username: process.env.POSTGRES_USER,
+      // password: process.env.POSTGRES_PASSWORD,
+      // database: process.env.POSTGRES_DB,
+      // entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      // synchronize: true,
     }),
     PatientsModule,
     ExtractionModule,
