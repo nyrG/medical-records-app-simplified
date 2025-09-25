@@ -157,22 +157,13 @@
                                     class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
                                     2</div>
                             </div>
-                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Configure</p>
+                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Process</p>
                         </div>
                         <div class="step-item flex-1 text-center" data-step="3">
                             <div class="relative mb-2">
-                                <div class="step-line"></div>
                                 <div
                                     class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
                                     3</div>
-                            </div>
-                            <p class="step-title font-bold text-xs sm:text-base transition-colors">Process</p>
-                        </div>
-                        <div class="step-item flex-1 text-center" data-step="4">
-                            <div class="relative mb-2">
-                                <div
-                                    class="step-circle w-8 h-8 rounded-full mx-auto bg-white border-2 relative z-10 flex items-center justify-center font-bold">
-                                    4</div>
                             </div>
                             <p class="step-title font-bold text-xs sm:text-base transition-colors">Review</p>
                         </div>
@@ -213,7 +204,7 @@
                         </div>
                         <p id="fileError" class="text-red-500 text-sm mt-1 h-5"></p>
 
-                        <h3 class="font-semibold text-lg text-slate-700 mb-2 flex items-center gap-2"><i
+                        <h3 class="font-semibold text-lg text-slate-700 mb-2 mt-6 flex items-center gap-2"><i
                                 class="fa-solid fa-cog text-slate-400"></i> <span>Upload Settings</span></h3>
                         <p class="text-sm text-slate-500 mb-4">Specify the type of document for better processing.</p>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -235,52 +226,6 @@
                     </div>
 
                     <div id="step-2" class="modal-step">
-                        <h3 class="font-semibold text-lg text-slate-700 mb-2 flex items-center gap-2"><i
-                                class="fa-solid fa-microchip text-slate-400"></i> <span>Choose an AI Model</span></h3>
-                        <p class="text-sm text-slate-500 mb-6">Select the AI model that best fits your needs for this
-                            document.</p>
-                        <div class="space-y-4">
-                            <label
-                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                                <input type="radio" name="geminiModel" value="gemini-2.5-flash-lite" class="hidden"
-                                    checked>
-                                <div class="flex items-center gap-3 mb-1">
-                                    <span class="font-bold text-blue-600">Fast</span>
-                                    <span
-                                        class="text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full">Most
-                                        Economical</span>
-                                </div>
-                                <p class="text-sm text-slate-600">Quickest processing for standard, clearly-written
-                                    documents. Ideal for high-volume tasks.</p>
-                            </label>
-                            <label
-                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                                <input type="radio" name="geminiModel" value="gemini-2.5-flash" class="hidden">
-                                <div class="flex items-center gap-3 mb-1">
-                                    <span class="font-bold text-blue-600">Reliable</span>
-                                    <span
-                                        class="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">Balanced
-                                        Cost</span>
-                                </div>
-                                <p class="text-sm text-slate-600">A balanced model providing high accuracy with good
-                                    performance.</p>
-                            </label>
-                            <label
-                                class="block p-4 border-2 border-slate-300 rounded-lg cursor-pointer hover:border-blue-500 transition-colors has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
-                                <input type="radio" name="geminiModel" value="gemini-2.5-pro" class="hidden">
-                                <div class="flex items-center gap-3 mb-1">
-                                    <span class="font-bold text-blue-600">Accurate</span>
-                                    <span
-                                        class="text-xs font-medium text-red-700 bg-red-100 px-2 py-0.5 rounded-full">Highest
-                                        Cost</span>
-                                </div>
-                                <p class="text-sm text-slate-600">The most powerful model for complex documents with
-                                    dense handwriting or poor quality scans.</p>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div id="step-3" class="modal-step">
                         <div class="text-center py-8">
                             <svg class="animate-spin h-12 w-12 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg"
                                 fill="none" viewBox="0 0 24 24">
@@ -292,7 +237,6 @@
                             </svg>
                             <p class="text-lg font-semibold text-slate-700 mt-6">Processing Document...</p>
                             <p class="text-sm text-slate-500">The AI is extracting information. Please wait.</p>
-
                             <div id="processing-summary"
                                 class="mt-6 text-left max-w-sm mx-auto bg-slate-100 border border-slate-200 rounded-lg p-3 text-sm">
                                 <h4 class="font-semibold text-slate-600 mb-2 border-b border-slate-300 pb-1">Upload
@@ -310,7 +254,7 @@
                         </div>
                     </div>
 
-                    <div id="step-4" class="modal-step">
+                    <div id="step-3" class="modal-step">
                         <div class="text-center py-12">
                             <i class="fa-solid fa-check-circle text-6xl text-green-500"></i>
                             <p class="text-lg font-semibold text-slate-700 mt-6">Extraction Complete</p>
@@ -332,14 +276,13 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <footer class="text-center py-6 text-slate-400 text-sm">
-        <p>&copy; 2025 Boveda Patient Records Module. All Rights Reserved.</p>
-        <p>Powered by Cubeworks Technology Consulting and Solutions, Inc.</p>
-    </footer>
+        <footer class="text-center py-6 text-slate-400 text-sm">
+            <p>&copy; 2025 Boveda Patient Records Module. All Rights Reserved.</p>
+            <p>Powered by Cubeworks Technology Consulting and Solutions, Inc.</p>
+        </footer>
 
-    <script src="script.js"></script>
+        <script src="script.js"></script>
 </body>
 
 </html>

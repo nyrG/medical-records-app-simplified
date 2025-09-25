@@ -11,8 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortOrder = 'DESC';
     let filterCategory = '';
     let modalCurrentStep = 1;
-    const modalTotalSteps = 4;
-    let cancelTimer = null;
+    const modalTotalSteps = 3; // Corrected total steps
     let cancelInterval = null;
 
     // --- DOM Elements ---
@@ -131,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newPatientBtn.addEventListener('click', () => {
         modalCurrentStep = 1;
         updateModalUI();
-        // MODIFIED: Use animation classes to open
         uploadModal.classList.remove('hidden');
         uploadModal.classList.add('modal-entering');
         uploadModal.classList.remove('modal-exiting');
@@ -307,26 +305,27 @@ document.addEventListener('DOMContentLoaded', () => {
             fileError.textContent = '';
             modalCurrentStep++;
             updateModalUI();
-        } else if (modalCurrentStep === 2) { // Move from Configure to Process
-            modalCurrentStep++;
-            updateModalUI();
-            handlePdfUploadAndProcess(); // This now starts the async API call
-        } else if (modalCurrentStep === modalTotalSteps) { // Final step, go to review page
+            handlePdfUploadAndProcess();
+        } else if (modalCurrentStep === modalTotalSteps) { // From Review to finish
             uploadModal.classList.add('hidden');
-            selectPatient(null); // This opens the detail view with the new data
+            selectPatient(null);
             clearFile();
         }
     });
 
     cancelBtn.addEventListener('click', () => {
-        if (modalCurrentStep === 3) return;
+        // Stop the interval if cancel is clicked during processing
+        if (cancelInterval) {
+            clearInterval(cancelInterval);
+            cancelInterval = null;
+        }
 
         uploadModal.classList.add('modal-exiting');
         uploadModal.classList.remove('modal-entering');
 
         setTimeout(() => {
             uploadModal.classList.add('hidden');
-            clearFile(); // MODIFIED: Call the new function here
+            clearFile();
             modalCurrentStep = 1;
             updateModalUI();
         }, 200);
@@ -411,7 +410,6 @@ document.addEventListener('DOMContentLoaded', () => {
         stepItems.forEach(item => {
             const step = parseInt(item.dataset.step, 10);
             const circle = item.querySelector('.step-circle');
-
             item.classList.remove('active', 'completed');
 
             if (step < modalCurrentStep) {
@@ -435,8 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
         primaryBtn.classList.remove('bg-slate-400', 'cursor-not-allowed');
         primaryBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
 
-        backBtn.classList.toggle('hidden', modalCurrentStep !== 2);
-        cancelBtn.classList.toggle('hidden', modalCurrentStep === 4);
+        backBtn.classList.add('hidden'); // Back button is not used in this flow
+        cancelBtn.classList.toggle('hidden', modalCurrentStep === 3);
 
         // Default state for cancel button - revert to original style
         cancelBtn.disabled = false;
@@ -446,30 +444,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         switch (modalCurrentStep) {
             case 1:
-                primaryBtn.textContent = 'Next';
-                break;
-            case 2:
                 primaryBtn.textContent = 'Upload & Process';
                 break;
-            case 3:
+            case 2:
                 primaryBtn.textContent = 'Processing...';
                 primaryBtn.disabled = true;
-                // --- REVERTED: Original darker disabled style for Primary button ---
                 primaryBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
                 primaryBtn.classList.add('bg-slate-400', 'cursor-not-allowed');
 
-                // --- START: New Logic for Step 3 ---
-                // 1. Populate the summary
                 const file = pdfFileInput.files[0];
                 const docType = document.querySelector('input[name="documentType"]:checked').value;
-                const modelInput = document.querySelector('input[name="geminiModel"]:checked');
-                const modelLabel = modelInput.closest('label').querySelector('.font-bold').textContent;
 
                 document.getElementById('summary-file-name').textContent = file ? file.name : 'N/A';
                 document.getElementById('summary-doc-type').textContent = docType.charAt(0).toUpperCase() + docType.slice(1);
-                document.getElementById('summary-ai-model').textContent = modelLabel;
+                document.getElementById('summary-ai-model').textContent = 'Fast'; // Hardcoded model label
 
-                // 2. Disable cancel button with LIGHTER grey and start countdown
                 cancelBtn.disabled = true;
                 cancelBtn.classList.add('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
                 cancelBtn.classList.remove('bg-slate-200', 'hover:bg-slate-300');
@@ -486,14 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         cancelInterval = null;
                         cancelBtn.disabled = false;
                         cancelBtn.textContent = 'Cancel';
-                        // Revert back to original active style
                         cancelBtn.classList.remove('bg-slate-300', 'text-slate-500', 'cursor-not-allowed');
                         cancelBtn.classList.add('bg-slate-200', 'hover:bg-slate-300');
                     }
-                }, 1000); // Update every second
-                // --- END: New Logic for Step 3 ---
+                }, 1000);
                 break;
-            case 4:
+            case 3:
                 primaryBtn.textContent = 'Review & Create Patient';
                 break;
         }
@@ -514,25 +501,29 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('file', file);
 
         // Get the selected model and append it
-        const selectedModelInput = document.querySelector('input[name="geminiModel"]:checked');
+        /* const selectedModelInput = document.querySelector('input[name="geminiModel"]:checked');
         const selectedModel = selectedModelInput.value;
+        formData.append('model', selectedModel); */
+
+        const selectedModel = 'gemini-2.5-flash-lite'; // Hardcoded model
         formData.append('model', selectedModel);
 
         // Get the selected document type and append it
         const selectedDocumentType = document.querySelector('input[name="documentType"]:checked').value;
         formData.append('documentType', selectedDocumentType);
 
-        const modelLabel = selectedModelInput.closest('label').querySelector('.font-bold').textContent;
-
         try {
             selectedPatient = await API.processPdf(formData);
             isEditMode = true;
-            modalCurrentStep++; // Move to step 4 (Review)
+
+            if (cancelInterval) { // Clear timer on success
+                clearInterval(cancelInterval);
+                cancelInterval = null;
+            }
+
+            modalCurrentStep++; // Move to step 3 (Review)
             updateModalUI();
-
-            console.log(`[Extraction Log] File processed with '${modelLabel}' (${selectedModel}) model.`);
-            console.log(`[Frontend] Document Type Selected: ${selectedDocumentType}`);
-
+            console.log(`[Extraction Log] File processed with '${selectedModel}' model.`);
         } catch (error) {
             alert(`Error processing PDF: ${error.message}`);
             uploadModal.classList.add('hidden');
