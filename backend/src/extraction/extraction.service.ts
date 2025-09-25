@@ -90,6 +90,7 @@ export class ExtractionService {
         "full_name": { "first_name": null, "middle_initial": null, "last_name": null },
         "date_of_birth": null,
         "age": null,
+        "documented_age": null,
         "sex": null,
         "address": {
           "house_no_street": null,
@@ -162,6 +163,7 @@ export class ExtractionService {
       ${documentTypeInstruction}
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
+      - **documented_age**: Extract the patient's age exactly as it is written in the document. This is separate from any age you might calculate from the date of birth. If the document states an age, capture that specific number here.
       - **branch_of_service**: This may be abbreviated as "br of svc" in the document.
       - **address**: Deconstruct the address into its specific components: house_no_street, barangay, city_municipality, province, and zip_code.
       - **sex (for both patient and sponsor)**: If sex is not explicitly written, infer it from the person's first name. Standardize the output to "M" for male, "F" for female, or null if it cannot be determined.

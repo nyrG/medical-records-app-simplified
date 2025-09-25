@@ -5,6 +5,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 type PatientInfo = {
   date_of_birth?: string;
   age?: number | null;
+  documented_age?: number | null; 
   address?: {
     house_no_street?: string;
     barangay?: string;

@@ -505,7 +505,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedModel = selectedModelInput.value;
         formData.append('model', selectedModel); */
 
-        const selectedModel = 'gemini-2.5-flash-lite'; // Hardcoded model
+        const selectedModel = 'gemini-2.5-flash'; // Hardcoded model
         formData.append('model', selectedModel);
 
         // Get the selected document type and append it
@@ -968,11 +968,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
                     <div class="p-4 border-b border-slate-200"><h3 class="font-semibold text-slate-800">Patient Demographics</h3></div>
                     <div class="p-4 divide-y divide-slate-200">
-                        ${createEditItem('First Name', patient_info.full_name?.first_name, 'patient_info.full_name.first_name')}
-                        ${createEditItem('Middle Initial', patient_info.full_name?.middle_initial, 'patient_info.full_name.middle_initial')}
-                        ${createEditItem('Last Name', patient_info.full_name?.last_name, 'patient_info.full_name.last_name')}
+                        <div class="privacy-blur">
+                            ${createEditItem('First Name', patient_info.full_name?.first_name, 'patient_info.full_name.first_name')}
+                            ${createEditItem('Middle Initial', patient_info.full_name?.middle_initial, 'patient_info.full_name.middle_initial')}
+                            ${createEditItem('Last Name', patient_info.full_name?.last_name, 'patient_info.full_name.last_name')}
+                        </div>
                         ${createEditItem('Record #', patient_info.patient_record_number, 'patient_info.patient_record_number')}
                         ${createEditItem('Date of Birth', patient_info.date_of_birth, 'patient_info.date_of_birth')}
+                        ${createEditItem('Documented Age', patient_info.documented_age, 'patient_info.documented_age')}
                         ${createEditItem('Category', patient_info.category, 'patient_info.category')}
                         ${sexEditHTML}
                         <div class="py-2 space-y-2">
@@ -1000,9 +1003,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (patient_info.date_of_birth) {
                 const date = new Date(patient_info.date_of_birth + 'T00:00:00');
                 const options = { year: 'numeric', month: 'long', day: 'numeric' };
-                const formattedDate = date.toLocaleDateString('en-US', options);
-                const age = patient_info.age ? `(${patient_info.age} yrs)` : '';
-                dobDisplay = `${formattedDate} ${age}`;
+                dobDisplay = date.toLocaleDateString('en-US', options);
             }
 
             let sexDisplay = 'N/A';
@@ -1043,21 +1044,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             demographicsHTML = `
-                <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
-                    <div class="p-5 border-b border-slate-200">
-                        <h3 class="font-bold text-lg text-slate-800">${fullName}</h3>
-                        <p class="text-slate-500">Record #: ${patient_info.patient_record_number || 'N/A'}</p>
-                    </div>
-                    <div class="p-5">
-                        <dl class="space-y-4">
-                            <div><dt class="text-sm text-slate-500">Date of Birth</dt><dd class="font-medium text-slate-800">${dobDisplay}</dd></div>
-                            <div><dt class="text-sm text-slate-500">Category</dt><dd class="font-medium text-slate-800">${patient_info.category || 'N/A'}</dd></div>
-                            <div><dt class="text-sm text-slate-500">Sex</dt><dd class="font-medium text-slate-800">${sexDisplay}</dd></div>
-                            <div><dt class="text-sm text-slate-500">Address</dt><dd class="font-medium text-slate-800">${fullAddress}</dd></div>
-                        </dl>
-                        ${serviceInfoHTML}
-                    </div>
-                </div>`;
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm">
+                <div class="p-5 border-b border-slate-200">
+                    <h3 class="font-bold text-lg text-slate-800 privacy-blur">${fullName}</h3>
+                    <p class="text-slate-500">Record #: ${patient_info.patient_record_number || 'N/A'}</p>
+                </div>
+                <div class="p-5">
+                    <dl class="space-y-4">
+                        <div><dt class="text-sm text-slate-500">Date of Birth</dt><dd class="font-medium text-slate-800">${dobDisplay}</dd></div>
+                        <div><dt class="text-sm text-slate-500">Current Age</dt><dd class="font-medium text-slate-800">${patient_info.age !== null ? `${patient_info.age} yrs` : 'N/A'}</dd></div>
+                        <div><dt class="text-sm text-slate-500">Documented Age</dt><dd class="font-medium text-slate-800">${patient_info.documented_age !== null ? `${patient_info.documented_age} yrs` : 'N/A'}</dd></div>
+                        <div><dt class="text-sm text-slate-500">Category</dt><dd class="font-medium text-slate-800">${patient_info.category || 'N/A'}</dd></div>
+                        <div><dt class="text-sm text-slate-500">Sex</dt><dd class="font-medium text-slate-800">${sexDisplay}</dd></div>
+                        <div><dt class="text-sm text-slate-500">Address</dt><dd class="font-medium text-slate-800">${fullAddress}</dd></div>
+                    </dl>
+                    ${serviceInfoHTML}
+                </div>
+            </div>`;
 
             // START: Updated logic for Key Information card
             let allergiesContent = '<span class="text-slate-500">N/A</span>';
