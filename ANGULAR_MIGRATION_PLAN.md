@@ -2,11 +2,28 @@
 
 This document outlines the step-by-step process for migrating the current vanilla JavaScript frontend to Angular, transforming the project into a monorepo, and setting up a productive development environment with VS Code Workspaces.
 
-## Phase 0: Project Setup & Monorepo Initialization
+## Phase 0: Initial Setup & Monorepo Transformation
 
-The first phase is to restructure the project into a monorepo, which will house the existing NestJS backend and the new Angular frontend as separate, co-located packages.
+This phase covers cloning the project, setting up the necessary backend configurations, and restructuring the project into a monorepo.
 
-### 1. Initialize `npm` Workspaces
+### 1. Prerequisites
+
+Before you begin, ensure you have the following:
+
+- Node.js (v18 or higher)
+- A Google Gemini API Key.
+- A connection URL from a Neon PostgreSQL database.
+
+### 2. Clone the Repository
+
+First, clone the project repository to your local machine.
+
+```bash
+git clone https://github.com/your-username/boveda-lens.git
+cd boveda-lens
+```
+
+### 3. Initialize `npm` Workspaces
 
 We will use `npm`'s built-in workspaces feature to manage the monorepo.
 
@@ -94,6 +111,26 @@ A `.code-workspace` file will help you manage the monorepo easily in VS Code.
 
 - Close your current VS Code window and open this `.code-workspace` file (`File > Open Workspace from File...`).
 
+### 5. Configure the NestJS Backend Environment
+
+Before the backend can run correctly and handle requests from the new Angular frontend, it needs to be configured. This typically involves setting up environment variables for the database connection, JWT secrets, and other application settings.
+
+1.  **Action**: Navigate to the `backend` directory.
+2.  **Action**: Look for a file named `.env.example` or similar. If it exists, create a copy of it and name it `.env`.
+
+    ```bash
+    # From the backend/ directory
+    cp .env.example .env
+    ```
+
+3.  **Action**: Open the new `.env` file and fill in the required values. This will include credentials for your local PostgreSQL database and a secret for signing JWTs.
+
+    ```ini
+    # backend/.env
+    DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME"
+    JWT_SECRET="YOUR_SUPER_SECRET_KEY"
+    ```
+
 ## Phase 1: Integrating Angular with the NestJS Backend
 
 To ensure the Angular app can communicate with the backend during development, we'll set up a proxy.
@@ -134,7 +171,234 @@ Now, when you run `npm run start:frontend` (or `ng serve` from the `frontend` fo
 
 ## Phase 2: Component-Based Migration
 
-This phase focuses on building a complete, self-contained **User Management** module in Angular. This includes login, logout, and a protected profile page. We will build and verify each piece incrementally.
+This phase focuses on building a complete, self-contained **User Management** feature, which includes both the backend logic in NestJS and the frontend components in Angular. We will build and verify each piece incrementally.
+
+### Step 2.0: Implement Backend Authentication
+
+Before creating the frontend login page, we need to implement the authentication logic in the NestJS backend. This involves setting up a User entity, handling password hashing, generating JSON Web Tokens (JWT), and creating the login endpoint.
+
+1.  **Action**: Install required dependencies for authentication.
+
+    ```bash
+    # From the project root
+    npm install @nestjs/passport @nestjs/jwt passport passport-jwt bcrypt --workspace=backend
+    npm install @types/passport-jwt @types/bcrypt --save-dev --workspace=backend
+    ```
+
+2.  **Action**: Create a `User` entity. Create a new file `backend/src/users/user.entity.ts`.
+
+    ```typescript
+    // backend/src/users/user.entity.ts
+    import {
+      Entity,
+      Column,
+      PrimaryGeneratedColumn,
+      BeforeInsert,
+    } from "typeorm";
+    import * as bcrypt from "bcrypt";
+
+    @Entity("users")
+    export class User {
+      @PrimaryGeneratedColumn("uuid")
+      id: string;
+
+      @Column({ unique: true })
+      email: string;
+
+      @Column()
+      password_hash: string;
+
+      @Column({ nullable: true })
+      name: string;
+
+      @BeforeInsert()
+      async hashPassword() {
+        if (this.password_hash) {
+          this.password_hash = await bcrypt.hash(this.password_hash, 10);
+        }
+      }
+
+      async validatePassword(password: string): Promise<boolean> {
+        return bcrypt.compare(password, this.password_hash);
+      }
+    }
+    ```
+
+3.  **Action**: Create a `Users` module and service to manage user data.
+
+    ```bash
+    # From the backend/ directory
+    nest generate module users
+    nest generate service users
+    ```
+
+4.  **Action**: Update `backend/src/users/users.module.ts` to expose the `UsersService`.
+
+    ```typescript
+    // backend/src/users/users.module.ts
+    import { Module } from "@nestjs/common";
+    import { TypeOrmModule } from "@nestjs/typeorm";
+    import { UsersService } from "./users.service";
+    import { User } from "./user.entity";
+
+    @Module({
+      imports: [TypeOrmModule.forFeature([User])],
+      providers: [UsersService],
+      exports: [UsersService], // Export UsersService for other modules
+    })
+    export class UsersModule {}
+    ```
+
+5.  **Action**: Update `backend/src/users/users.service.ts` to find users.
+
+    ```typescript
+    // backend/src/users/users.service.ts
+    import { Injectable } from "@nestjs/common";
+    import { InjectRepository } from "@nestjs/typeorm";
+    import { Repository } from "typeorm";
+    import { User } from "./user.entity";
+
+    @Injectable()
+    export class UsersService {
+      constructor(
+        @InjectRepository(User)
+        private usersRepository: Repository<User>
+      ) {}
+
+      async findOne(email: string): Promise<User | undefined> {
+        return this.usersRepository.findOne({ where: { email } });
+      }
+    }
+    ```
+
+6.  **Action**: Create the `Auth` module, service, and controller.
+
+    ```bash
+    # From the backend/ directory
+    nest generate module auth
+    nest generate service auth
+    nest generate controller auth
+    ```
+
+7.  **Action**: Configure the `AuthModule` in `backend/src/auth/auth.module.ts`. This sets up JWT support.
+
+    ```typescript
+    // backend/src/auth/auth.module.ts
+    import { Module } from "@nestjs/common";
+    import { AuthService } from "./auth.service";
+    import { AuthController } from "./auth.controller";
+    import { UsersModule } from "../users/users.module";
+    import { JwtModule } from "@nestjs/jwt";
+    import { ConfigModule, ConfigService } from "@nestjs/config";
+
+    @Module({
+      imports: [
+        UsersModule,
+        JwtModule.registerAsync({
+          imports: [ConfigModule],
+          useFactory: async (configService: ConfigService) => ({
+            secret: configService.get<string>("JWT_SECRET"),
+            signOptions: { expiresIn: "60m" },
+          }),
+          inject: [ConfigService],
+        }),
+      ],
+      providers: [AuthService],
+      controllers: [AuthController],
+    })
+    export class AuthModule {}
+    ```
+
+8.  **Action**: Implement the login logic in `backend/src/auth/auth.service.ts`.
+
+    ```typescript
+    // backend/src/auth/auth.service.ts
+    import { Injectable, UnauthorizedException } from "@nestjs/common";
+    import { UsersService } from "../users/users.service";
+    import { JwtService } from "@nestjs/jwt";
+
+    @Injectable()
+    export class AuthService {
+      constructor(
+        private usersService: UsersService,
+        private jwtService: JwtService
+      ) {}
+
+      async signIn(
+        email: string,
+        pass: string
+      ): Promise<{ access_token: string }> {
+        const user = await this.usersService.findOne(email);
+        if (!user || !(await user.validatePassword(pass))) {
+          throw new UnauthorizedException("Invalid credentials");
+        }
+        const payload = { sub: user.id, email: user.email };
+        return {
+          access_token: await this.jwtService.signAsync(payload),
+        };
+      }
+    }
+    ```
+
+9.  **Action**: Create the `/api/auth/login` endpoint in `backend/src/auth/auth.controller.ts`.
+
+    ```typescript
+    // backend/src/auth/auth.controller.ts
+    import {
+      Body,
+      Controller,
+      Post,
+      HttpCode,
+      HttpStatus,
+    } from "@nestjs/common";
+    import { AuthService } from "./auth.service";
+
+    @Controller("auth")
+    export class AuthController {
+      constructor(private authService: AuthService) {}
+
+      @HttpCode(HttpStatus.OK)
+      @Post("login")
+      signIn(@Body() signInDto: Record<string, any>) {
+        return this.authService.signIn(signInDto.email, signInDto.pass);
+      }
+    }
+    ```
+
+10. **Action**: Import the new `AuthModule` and `UsersModule` into the root `AppModule` in `backend/src/app.module.ts`.
+
+    ```diff
+    --- a/backend/src/app.module.ts
+    +++ b/backend/src/app.module.ts
+    @@ -6,6 +6,8 @@
+     import { Patient } from './patients/patient.entity';
+     import { Encounter } from './patients/encounter.entity';
+     import { ExtractionModule } from './extraction/extraction.module';
+    +import { AuthModule } from './auth/auth.module';
+    +import { UsersModule } from './users/users.module';
+
+     @Module({
+       imports: [
+    @@ -18,6 +20,8 @@
+           synchronize: true, // DEV only
+         }),
+         ExtractionModule,
+    +    AuthModule,
+    +    UsersModule,
+       ],
+       controllers: [AppController],
+       providers: [AppService],
+     })
+     export class AppModule {}
+    ```
+
+11. **Action**: To test the login, you'll need a user in your database. A user seeding service has been created that will automatically add a test user to your database when the application starts if one doesn't already exist.
+
+    The credentials for the test user are:
+    - **Email**: `test@example.com`
+    - **Password**: `password`
+
+With these steps, your NestJS backend now has a fully functional `/api/auth/login` endpoint ready to authenticate users for the Angular frontend.
 
 ### Step 2.1: Enable HTTP Client
 
@@ -166,7 +430,8 @@ This service will manage all authentication logic, such as making API calls and 
 
     ```bash
     # Run from the frontend/ directory
-    ng generate service services/auth
+    # To get the conventional 'auth.service.ts' filename, we specify it directly.
+    ng generate service services/auth.service
     ```
 
 2.  **Action**: Add basic login/logout methods to `frontend/src/app/services/auth.service.ts`.
@@ -224,10 +489,15 @@ This component will provide the user interface for logging in.
 
     ```bash
     # Run from the frontend/ directory
-    ng generate component components/login --standalone
+    # We will place route-level components in a `pages` directory for better organization.
+    ng generate component pages/login --standalone
     ```
 
+    > **Note on Naming**: Your Angular CLI setup generates files without the `.component` suffix (e.g., `login.ts`). We will follow this convention for consistency. The class name will be `Login`.
+
 2.  **Action**: Create a simple login form in `login.component.html`.
+
+    > Note: The file will be `login.html` based on the generator output.
 
     ```html
     <!-- frontend/src/app/components/login/login.component.html -->
@@ -275,7 +545,7 @@ This component will provide the user interface for logging in.
 3.  **Action**: Implement the component logic in `login.component.ts` to handle form submission.
 
     ```typescript
-    // frontend/src/app/components/login/login.component.ts
+    // frontend/src/app/pages/login/login.ts
     import { Component, inject } from "@angular/core";
     import { FormsModule } from "@angular/forms";
     import { Router } from "@angular/router";
@@ -285,9 +555,9 @@ This component will provide the user interface for logging in.
       selector: "app-login",
       standalone: true,
       imports: [FormsModule], // Import FormsModule for ngModel
-      templateUrl: "./login.component.html",
+      templateUrl: "./login.html",
     })
-    export class LoginComponent {
+    export class Login {
       private authService = inject(AuthService);
       private router = inject(Router);
 
@@ -320,7 +590,7 @@ Set up the application's routes to navigate between the login page and a future 
     ```typescript
     // frontend/src/app/app.routes.ts
     import { Routes } from "@angular/router";
-    import { LoginComponent } from "./components/login/login.component";
+    import { Login } from "./pages/login/login";
 
     export const routes: Routes = [
       { path: "login", component: LoginComponent },
@@ -365,7 +635,6 @@ Once the new User Management feature is ready, you will integrate it with the ol
 2.  **Configure NestJS for Hybrid Serving**: In `backend/src/main.ts`, configure the `serve-static` module to serve both the new Angular app (at the root `/`) and the old frontend files (e.g., from `/legacy`). After a user logs in via the Angular app, they will be redirected to the legacy patient management pages.
 
 3.  **Incremental Migration**: After the initial integration is stable, you can begin migrating existing features from the old Vanilla JS app into new Angular components, one by one. Good candidates to migrate next are:
-
     - The Patient List table.
     - The Patient Detail view.
     - The PDF upload/extraction form.

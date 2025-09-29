@@ -6,13 +6,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PatientsModule } from './patients/patients.module';
 import { ConfigModule } from '@nestjs/config'; // Import ConfigModule
 import { ExtractionModule } from './extraction/extraction.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
     // This will load the .env file from the root directory
     ConfigModule.forRoot({
       isGlobal: true, // Make the config service available globally
-      envFilePath: join(__dirname, '..', '..', '.env'),
+      envFilePath: join(__dirname, '..', '.env'),
     }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
@@ -39,6 +41,8 @@ import { ExtractionModule } from './extraction/extraction.module';
     }),
     PatientsModule,
     ExtractionModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],

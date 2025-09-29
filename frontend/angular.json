@@ -59,7 +59,8 @@
             }
           },
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "buildTarget": "frontend:build"
           },
           "defaultConfiguration": "development"
         },
