@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "name": "Root",
+      "path": "..",
+    },
+    {
+      "name": "Backend (NestJS)",
+      "path": "../backend",
+    },
+    {
+      "name": "Frontend (Angular)",
+      "path": "../frontend",
+    },
+  ],
+  "settings": {
+    "workbench.colorCustomizations": {
+      "activityBar.background": "#2C3E50",
+      "titleBar.activeBackground": "#2C3E50",
+      "titleBar.activeForeground": "#FFFFFF",
+    },
+    "files.exclude": {
+      "**/backend": true,
+      "**/frontend": true,
+      "**/.git": true,
+    },
+  },
+}

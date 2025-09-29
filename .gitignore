@@ -11,6 +11,7 @@ yarn-debug.log*
 # IDE and editor configuration
 .idea/
 .vscode/*
+!.vscode/boveda-lens.code-workspace
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/extensions.json

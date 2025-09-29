@@ -1,0 +1,16 @@
+{
+  "name": "boveda-lens-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "start:backend": "npm run start:dev --workspace=backend",
+    "start:frontend": "npm start --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend"
+  }
+}
