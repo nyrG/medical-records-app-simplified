@@ -13,7 +13,7 @@ export class Login {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  credentials = { email: "", pass: "" };
+  credentials = { username: "", pass: "" };
   errorMessage = "";
 
   onSubmit() {
@@ -26,7 +26,7 @@ export class Login {
       },
       error: (err) => {
         console.error("Login failed", err);
-        this.errorMessage = "Invalid email or password. Please try again.";
+        this.errorMessage = "Invalid username or password. Please try again.";
       },
     });
   }

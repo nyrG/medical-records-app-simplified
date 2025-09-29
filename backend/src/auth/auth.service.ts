@@ -9,12 +9,12 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async signIn(email: string, pass: string): Promise<{ access_token: string }> {
-    const user = await this.usersService.findOne(email);
+  async signIn(username: string, pass: string): Promise<{ access_token: string }> {
+    const user = await this.usersService.findOne(username);
     if (!user || !(await user.validatePassword(pass))) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, username: user.username };
     return {
       access_token: await this.jwtService.signAsync(payload),
     };

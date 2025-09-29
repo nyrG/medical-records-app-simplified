@@ -17,7 +17,7 @@ export class AuthService {
 
     constructor(private http: HttpClient) { }
 
-    login(credentials: { email: string; pass: string }) {
+    login(credentials: { username: string; pass: string }) {
         return this.http
             .post<{ access_token: string }>(`${this.apiUrl}/login`, credentials)
             .pipe(

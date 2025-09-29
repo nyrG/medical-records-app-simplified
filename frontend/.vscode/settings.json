@@ -1,0 +1,30 @@
+// c:\Users\Nori\Documents\GitHub\Projects\cubeworks-nap\.vscode\settings.json
+{
+  // Disable the default CSS validator to prevent conflicts with Tailwind's language server.
+  "css.validate": false,
+  "less.validate": false,
+  "scss.validate": false,
+
+  // Enables quick suggestions (autocomplete) within string literals,
+  // which is essential for Angular's [class] and [ngClass] bindings.
+  "editor.quickSuggestions": {
+    "strings": "on"
+  },
+
+  // Explicitly tells the Tailwind extension to activate for HTML files.
+  "tailwindCSS.includeLanguages": {
+    "html": "html",
+    "css": "css"
+  },
+
+  // Provides custom regular expressions to help the extension find
+  // Tailwind classes inside Angular-specific syntax.
+  "tailwindCSS.experimental.classRegex": [
+    ["class:\\s*['\"]([^'\"]*)['\"]", "'([^']*)'"],
+    ["class\\s*=\\s*['\"]([^'\"]*)['\"]", "['\"]([^'\"]*)['\"]"],
+    ["['\"]([^'\"]*)['\"]:\\s*true", "(?:'|\\\"|`)([^']*)(?:'|\\\"|`)"]
+  ],
+  "files.associations": {
+    ".css": "tailwindcss"
+  }
+}

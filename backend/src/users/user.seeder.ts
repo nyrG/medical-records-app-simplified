@@ -16,17 +16,18 @@ export class UserSeeder implements OnModuleInit {
 
   async seed() {
     const existingUser = await this.userRepository.findOne({
-      where: { email: 'test@example.com' },
+      where: { username: 'afp_boveda' },
     });
 
     if (!existingUser) {
       const user = this.userRepository.create({
-        email: 'test@example.com',
-        password_hash: 'password', // This will be hashed by the @BeforeInsert hook
-        name: 'Test User',
+        email: 'afp@boveda.com',
+        username: 'afp_boveda',
+        password_hash: 'afp_demo', // This will be hashed by the @BeforeInsert hook
+        name: 'AFP Boveda User',
       });
       await this.userRepository.save(user);
-      console.log('Test user created successfully.');
+      console.log('AFP Boveda user created successfully.');
     }
   }
 }

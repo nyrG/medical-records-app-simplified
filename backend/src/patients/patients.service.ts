@@ -2,7 +2,7 @@
 
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, MoreThan } from 'typeorm';
+import { Repository, MoreThan } from 'typeorm';
 import { Patient } from './entities/patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -17,7 +17,7 @@ const toTitleCase = (str: string | null | undefined): string | null => {
   return str
     .toLowerCase()
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
 
@@ -26,7 +26,7 @@ export class PatientsService {
   constructor(
     @InjectRepository(Patient)
     private patientsRepository: Repository<Patient>,
-  ) { }
+  ) {}
 
   create(createPatientDto: CreatePatientDto): Promise<Patient> {
     const patient = this.patientsRepository.create(createPatientDto);
@@ -35,7 +35,9 @@ export class PatientsService {
     const encounters = createPatientDto.medical_encounters as any;
 
     if (!info || !info.full_name || !info.full_name.first_name || !info.full_name.last_name) {
-      throw new BadRequestException('Patient data is incomplete. A first and last name are required to save a new record.');
+      throw new BadRequestException(
+        'Patient data is incomplete. A first and last name are required to save a new record.',
+      );
     }
 
     // --- START: EXPANDED TITLE CASE FORMATTING ---
@@ -65,9 +67,7 @@ export class PatientsService {
     }
     // --- END: EXPANDED TITLE CASE FORMATTING ---
 
-    patient.name = [info.full_name.first_name, info.full_name.last_name]
-      .filter(Boolean)
-      .join(' ');
+    patient.name = [info.full_name.first_name, info.full_name.last_name].filter(Boolean).join(' ');
 
     patient.sponsor_info = sponsorInfo ?? null;
     patient.medical_encounters = encounters ?? null;
@@ -76,7 +76,14 @@ export class PatientsService {
     return this.patientsRepository.save(patient);
   }
 
-  async findAll(page: number, limit: number, search?: string, sortBy: string = 'updated_at', sortOrder: 'ASC' | 'DESC' = 'DESC', category?: string) {
+  async findAll(
+    page: number,
+    limit: number,
+    search?: string,
+    sortBy: string = 'updated_at',
+    sortOrder: 'ASC' | 'DESC' = 'DESC',
+    category?: string,
+  ) {
     const skip = (page - 1) * limit;
 
     const queryBuilder = this.patientsRepository.createQueryBuilder('patient');
@@ -97,7 +104,7 @@ export class PatientsService {
       'summary.final_diagnosis',
       'patient_info.category',
       'created_at',
-      'updated_at'
+      'updated_at',
     ];
 
     if (allowedSortBy.includes(sortBy)) {
@@ -117,10 +124,7 @@ export class PatientsService {
     }
     // --- END: NEW SORTING LOGIC ---
 
-    const [data, total] = await queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [data, total] = await queryBuilder.skip(skip).take(limit).getManyAndCount();
 
     return { data, total };
   }
@@ -160,9 +164,11 @@ export class PatientsService {
 
     // MODIFIED: Added "WHERE deleted_at IS NULL" to the query
     const avgAgeResult = await this.patientsRepository.query(
-      `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient WHERE deleted_at IS NULL`
+      `SELECT AVG(EXTRACT(YEAR FROM AGE(NOW(), (patient_info->>'date_of_birth')::date))) as "avgAge" FROM patient WHERE deleted_at IS NULL`,
     );
-    const averageAge = avgAgeResult[0]?.avgAge ? parseFloat(avgAgeResult[0].avgAge).toFixed(1) : 'N/A';
+    const averageAge = avgAgeResult[0]?.avgAge
+      ? parseFloat(avgAgeResult[0].avgAge).toFixed(1)
+      : 'N/A';
 
     return { totalPatients, recentlyUpdated, categories, topDiagnoses, averageAge };
   }

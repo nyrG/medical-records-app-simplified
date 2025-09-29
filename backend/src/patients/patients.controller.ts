@@ -1,13 +1,23 @@
 // backend/src/patients/patients.controller.ts
 
-import { Controller, Get, Post, Body, Patch, Param, Delete, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { PatientsService } from './patients.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 
-@Controller('api/patients')
+@Controller('patients')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) { }
+  constructor(private readonly patientsService: PatientsService) {}
 
   @Post()
   create(@Body() createPatientDto: CreatePatientDto) {
@@ -26,11 +36,11 @@ export class PatientsController {
     @Query('search') search?: string,
     @Query('sortBy') sortBy: string = 'updated_at',
     @Query('sortOrder') sortOrder: 'ASC' | 'DESC' = 'DESC',
-    @Query('category') category?: string
+    @Query('category') category?: string,
   ) {
     return this.patientsService.findAll(page, limit, search, sortBy, sortOrder, category);
   }
-  
+
   // The parameterized route ':id' now comes AFTER the specific 'stats' route.
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {

@@ -1,1 +1,9 @@
-/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles can be added here. Tailwind's base styles are already included. */
+/* For example, you might set a global background color or font for the body. */
+body {
+  @apply bg-white; /* Sets a consistent white background for the entire app */
+}

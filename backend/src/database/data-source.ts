@@ -7,17 +7,17 @@ import * as path from 'path';
 dotenv.config({ path: path.join(__dirname, '..', '..', '..', '.env') });
 
 export const AppDataSource = new DataSource({
-    type: 'postgres',
-    // MODIFIED: Use the connection URL instead of separate fields
-    url: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false, // Required for Neon's free tier
-    },
-    entities: [Patient],
-    synchronize: true, // Keep this as true for now
-    
-    // Local development configuration
-    /* type: 'postgres',
+  type: 'postgres',
+  // MODIFIED: Use the connection URL instead of separate fields
+  url: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false, // Required for Neon's free tier
+  },
+  entities: [Patient],
+  synchronize: true, // Keep this as true for now
+
+  // Local development configuration
+  /* type: 'postgres',
     host: 'localhost',
     port: 5432,
     username: process.env.POSTGRES_USER,
