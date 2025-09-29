@@ -593,7 +593,7 @@ Set up the application's routes to navigate between the login page and a future 
     import { Login } from "./pages/login/login";
 
     export const routes: Routes = [
-      { path: "login", component: LoginComponent },
+      { path: "login", component: Login },
       // We will add a protected '/profile' route and an auth guard later
       // { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
       { path: "", redirectTo: "/login", pathMatch: "full" },
@@ -626,6 +626,135 @@ Let's verify that the login flow is working.
     - In the "Application" tab of your developer tools, check `Local Storage`. You should see a key named `auth_token` with a value (the JWT).
 
 Once these steps are verified, you have successfully built the core authentication logic. The next steps would be to create a protected profile page and an authentication guard to restrict access.
+
+### Step 2.6: Create a Protected Profile Page
+
+Now, let's create a simple profile page that will only be accessible to logged-in users.
+
+1.  **Action**: Generate the `Profile` component.
+
+    ```bash
+    # Run from the frontend/ directory
+    ng generate component pages/profile --standalone
+    ```
+
+2.  **Action**: Add basic content and a logout button to `frontend/src/app/pages/profile/profile.html`.
+
+    ```html
+    <!-- frontend/src/app/pages/profile/profile.html -->
+    <div class="max-w-4xl mx-auto mt-10 p-8 border rounded-lg shadow-lg">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">User Profile</h2>
+        <button
+          (click)="logout()"
+          class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded"
+        >
+          Logout
+        </button>
+      </div>
+      <div class="bg-gray-100 p-6 rounded-lg">
+        <h3 class="text-xl font-semibold mb-4">Welcome!</h3>
+        <p>
+          This is a protected page. You can only see this content if you are
+          logged in.
+        </p>
+        <!-- We can display user-specific data here in the future -->
+      </div>
+    </div>
+    ```
+
+3.  **Action**: Implement the logout logic in `frontend/src/app/pages/profile/profile.ts`.
+
+    ```typescript
+    // frontend/src/app/pages/profile/profile.ts
+    import { Component, inject } from "@angular/core";
+    import { Router } from "@angular/router";
+    import { AuthService } from "../../services/auth.service";
+
+    @Component({
+      selector: "app-profile",
+      standalone: true,
+      imports: [],
+      templateUrl: "./profile.html",
+    })
+    export class Profile {
+      private authService = inject(AuthService);
+      private router = inject(Router);
+
+      logout() {
+        this.authService.logout();
+        this.router.navigate(["/login"]);
+      }
+    }
+    ```
+
+### Step 2.7: Create an Authentication Guard
+
+An authentication guard is a function that runs before a route is activated, determining if the user is allowed to access it.
+
+1.  **Action**: Generate the `auth` guard.
+
+    ```bash
+    # Run from the frontend/ directory
+    ng generate guard guards/auth
+    ```
+
+    When prompted, choose `CanActivate` and answer "Y" to using a function.
+
+2.  **Action**: Implement the guard logic in `frontend/src/app/guards/auth.guard.ts`. The guard will check the login status from the `AuthService` and redirect to the login page if the user is not authenticated.
+
+    ```typescript
+    // frontend/src/app/guards/auth.guard.ts
+    import { inject } from "@angular/core";
+    import { CanActivateFn, Router } from "@angular/router";
+    import { AuthService } from "../services/auth.service";
+
+    export const authGuard: CanActivateFn = (route, state) => {
+      const authService = inject(AuthService);
+      const router = inject(Router);
+
+      if (authService.isLoggedIn()) {
+        return true;
+      }
+
+      // Redirect to the login page
+      return router.parseUrl("/login");
+    };
+    ```
+
+### Step 2.8: Update Application Routes
+
+Finally, update the application's routes to use the new component and protect it with the guard.
+
+1.  **Action**: Modify `frontend/src/app/app.routes.ts` to include the protected `/profile` route.
+
+    ```diff
+    --- a/frontend/src/app/app.routes.ts
+    +++ b/frontend/src/app/app.routes.ts
+    @@ -1,10 +1,11 @@
+     import { Routes } from "@angular/router";
+     import { Login } from "./pages/login/login";
+    +import { Profile } from "./pages/profile/profile";
+    +import { authGuard } from "./guards/auth.guard";
+
+     export const routes: Routes = [
+       { path: "login", component: Login },
+       // We will add a protected '/profile' route and an auth guard later
+    -  // { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+    +  { path: 'profile', component: Profile, canActivate: [authGuard] },
+       { path: "", redirectTo: "/login", pathMatch: "full" },
+     ];
+    ```
+
+### Step 2.9: Final Verification
+
+1.  **Action**: Ensure both servers are running.
+2.  **Verification**: Open your browser to `http://localhost:4200/profile`. You should be immediately redirected to the `/login` page.
+3.  **Action**: Log in with the correct credentials (`test@example.com` / `password`).
+4.  **Verification**: You should now be redirected to the `/profile` page and see the "User Profile" content.
+5.  **Action**: Refresh the `/profile` page. You should remain on the profile page, as your session is persisted in local storage.
+6.  **Action**: Click the "Logout" button.
+7.  **Verification**: You should be redirected back to the `/login` page, and the `auth_token` should be removed from local storage.
 
 ## Phase 3: Hybrid Integration & Gradual Migration
 
