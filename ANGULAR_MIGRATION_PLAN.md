@@ -622,7 +622,7 @@ Let's verify that the login flow is working.
 3.  **Verification**: Open your browser's developer tools (F12) and go to the "Network" tab.
 4.  **Action**: Enter valid credentials and submit the form.
 5.  **Verification**:
-    - You should see a `POST` request to `http://localhost:4200/api/auth/login` that returns a `201 Created` status.
+    - You should see a `POST` request to `http://localhost:4200/api/auth/login` that returns a `200 OK` status.
     - In the "Application" tab of your developer tools, check `Local Storage`. You should see a key named `auth_token` with a value (the JWT).
 
 Once these steps are verified, you have successfully built the core authentication logic. The next steps would be to create a protected profile page and an authentication guard to restrict access.

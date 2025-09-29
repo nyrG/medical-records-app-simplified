@@ -5,6 +5,9 @@ import { ValidationPipe } from '@nestjs/common'; // 1. Import ValidationPipe
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable Cross-Origin Resource Sharing (CORS)
+  app.enableCors();
+
   // 1. Set a global prefix for all routes
   app.setGlobalPrefix('api');
 
