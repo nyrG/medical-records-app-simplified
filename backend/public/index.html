@@ -15,8 +15,55 @@
 </head>
 
 <body class="bg-slate-50 text-slate-800">
+    <script>
+        // This inline script runs before the page is rendered to prevent a "flash" of the login screen.
+        try {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+            document.documentElement.style.setProperty('--login-display', isLoggedIn ? 'none' : 'flex');
+            document.documentElement.style.setProperty('--app-display', isLoggedIn ? 'block' : 'none');
+        } catch (e) {
+            // sessionStorage might not be available in some private browsing modes or if cookies are disabled.
+            console.error('Could not access sessionStorage.', e);
+        }
+    </script>
 
-    <div id="app-container">
+    <noscript>
+        <div class="p-4 text-center bg-red-100 text-red-800">This application requires JavaScript to function. Please enable it in your browser settings.</div>
+    </noscript>
+
+    <div id="login-container" style="display: var(--login-display, flex);" class="items-center justify-center min-h-screen bg-slate-100 p-4">
+        <div class="w-full max-w-sm p-8 space-y-6 bg-white rounded-lg shadow-lg border border-slate-200">
+            <div class="text-center">
+                <img src="logo.png" alt="Boveda Logo" class="w-16 h-16 mx-auto">
+                <h2 class="mt-4 text-2xl font-bold text-center text-slate-900">
+                    Boveda Records Module
+                </h2>
+                <p class="mt-2 text-sm text-center text-slate-500">
+                    Sign in to access your dashboard.
+                </p>
+            </div>
+            <form id="loginForm" class="mt-6 space-y-4">
+                <div class="space-y-2">
+                    <label for="username" class="text-sm font-medium text-slate-700">Username</label>
+                    <input id="username" name="username" type="text" required
+                        class="relative block w-full px-3 py-2 text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+                <div class="space-y-2">
+                    <label for="password" class="text-sm font-medium text-slate-700">Password</label>
+                    <input id="password" name="password" type="password" required
+                        class="relative block w-full px-3 py-2 text-slate-900 placeholder-slate-400 bg-slate-50 border border-slate-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                </div>
+
+                <p id="loginError" class="text-sm text-red-600 h-4"></p>
+
+                <div>
+                    <button type="submit" class="btn btn-primary w-full justify-center">Sign In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-container" style="display: var(--app-display, none);">
         <div class="main-container p-4 sm:p-6 lg:p-8">
             <header class="flex flex-col gap-4 mb-4">
                 <div class="flex items-center justify-between w-full">
@@ -27,14 +74,18 @@
                             Records</h1>
                     </a>
 
-                    <div class="flex items-center gap-2 ml-auto"> <button id="deleteSelectedBtn"
-                            class="btn btn-danger hidden">
+                    <div class="flex items-center gap-2 ml-auto">
+                        <button id="deleteSelectedBtn" class="btn btn-danger hidden">
                             <i class="fa-solid fa-trash-can"></i>
                             <span id="deleteSelectedCount">Delete Selected</span>
                         </button>
                         <button id="newPatientBtn" class="btn btn-primary">
                             <i class="fa-solid fa-plus"></i>
                             <span>Create from PDF</span>
+                        </button>
+                        <button id="logoutBtn" class="btn btn-secondary">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            <span>Logout</span>
                         </button>
                     </div>
                 </div>
@@ -247,8 +298,6 @@
                                     <p><strong class="font-medium text-slate-500 w-28 inline-block">Document
                                             Type:</strong> <span id="summary-doc-type" class="text-slate-700"></span>
                                     </p>
-                                    <p><strong class="font-medium text-slate-500 w-28 inline-block">AI Model:</strong>
-                                        <span id="summary-ai-model" class="text-slate-700"></span></p>
                                 </div>
                             </div>
                         </div>
@@ -273,6 +322,42 @@
                     <button id="primaryBtn"
                         class="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors text-center">Next:
                         Select Model</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grammar and Spelling Modal -->
+        <div id="grammarModal"
+            class="hidden fixed inset-0 bg-gray-600 bg-opacity-75 z-50 flex items-center justify-center p-4">
+            <div
+                class="modal-content bg-white rounded-lg shadow-xl w-full max-w-4xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+                    <h2 class="flex items-center gap-3 text-xl font-semibold text-slate-800">
+                        <i class="fa-solid fa-spell-check text-blue-500"></i>
+                        <span>Grammar & Spelling Review</span>
+                    </h2>
+                    <button id="grammarModalCloseBtn"
+                        class="text-slate-400 hover:text-red-600 transition-colors p-1 rounded-full">
+                        <i class="fa-solid fa-xmark fa-lg"></i>
+                    </button>
+                </div>
+                <div class="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4 p-4 overflow-y-auto">
+                    <div class="md:col-span-2 flex flex-col h-full">
+                        <label for="grammarModalTextarea" class="block font-medium text-sm text-gray-700 mb-2">Editable
+                            Text</label>
+                        <div id="grammarEditorContainer" class="relative w-full flex-grow min-h-[400px]">
+                            <div id="grammarModalBackdrop"
+                                class="absolute inset-0 p-2 border border-transparent rounded-md overflow-auto pointer-events-none whitespace-pre-wrap break-words font-mono text-sm leading-relaxed"></div>
+                            <textarea id="grammarModalTextarea" spellcheck="false" class="absolute inset-0 w-full h-full p-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-transparent resize-none font-mono text-sm leading-relaxed"></textarea>
+                        </div>
+                    </div>
+                    <div id="grammarModalSuggestions" class="md:col-span-1 bg-slate-50 border border-slate-200 rounded-md p-3 h-full overflow-y-auto"></div>
+                </div>
+                <div class="bg-white p-4 border-t border-slate-200 flex justify-end gap-3">
+                    <button id="grammarModalFormatBtn" class="btn btn-secondary mr-auto hidden">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Format Text
+                    </button>
+                    <button id="grammarModalApplyBtn" class="btn btn-primary">Apply & Close</button>
                 </div>
             </div>
         </div>

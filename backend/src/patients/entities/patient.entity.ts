@@ -1,11 +1,19 @@
 // backend/src/patients/entities/patient.entity.ts
 
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn, AfterLoad } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  DeleteDateColumn,
+  AfterLoad,
+} from 'typeorm';
 
 type PatientInfo = {
   date_of_birth?: string;
   age?: number | null;
-  documented_age?: number | null; 
+  documented_age?: number | null;
   address?: {
     house_no_street?: string;
     barangay?: string;
@@ -44,7 +52,12 @@ export class Patient {
   @Column('jsonb', { nullable: true })
   medical_encounters: {
     consultations?: Consultation[];
-    [key: string]: any;
+    lab_results?: any[]; // Consider defining a type for lab results
+    radiology_reports?: {
+      examination?: string | null;
+      date_performed?: string | null;
+      [key: string]: any;
+    }[];
   } | null;
 
   @Column('jsonb', { nullable: true })
@@ -73,12 +86,15 @@ export class Patient {
 
       // Now, calculate age_at_visit for each consultation
       if (this.medical_encounters?.consultations) {
-        this.medical_encounters.consultations.forEach(consultation => {
+        this.medical_encounters.consultations.forEach((consultation) => {
           if (consultation.consultation_date) {
             const consultationDate = new Date(consultation.consultation_date);
             let visitAge = consultationDate.getFullYear() - birthDate.getFullYear();
             const monthDiff = consultationDate.getMonth() - birthDate.getMonth();
-            if (monthDiff < 0 || (monthDiff === 0 && consultationDate.getDate() < birthDate.getDate())) {
+            if (
+              monthDiff < 0 ||
+              (monthDiff === 0 && consultationDate.getDate() < birthDate.getDate())
+            ) {
               visitAge--;
             }
             consultation.age_at_visit = visitAge;
@@ -87,7 +103,6 @@ export class Patient {
           }
         });
       }
-
     } else {
       this.patient_info.age = null;
     }

@@ -2,7 +2,12 @@
 
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, FileDataPart } from '@google/generative-ai';
+import {
+  GoogleGenerativeAI,
+  HarmCategory,
+  HarmBlockThreshold,
+  FileDataPart,
+} from '@google/generative-ai';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 
@@ -23,7 +28,16 @@ export class ExtractionService {
   // --- Date Formatting and Cleaning (No changes needed) ---
   private formatDate(dateString: string | null): string | null {
     if (!dateString || typeof dateString !== 'string') return null;
-    const formatsToTry = ['DD MMM YYYY', 'MMMM DD, YYYY', 'YYYY-MM-DD', 'M/D/YYYY', 'MM/DD/YYYY', 'MM/DD/YY', 'D-MMM-YY', 'DD-MMM-YY'];
+    const formatsToTry = [
+      'DD MMM YYYY',
+      'MMMM DD, YYYY',
+      'YYYY-MM-DD',
+      'M/D/YYYY',
+      'MM/DD/YYYY',
+      'MM/DD/YY',
+      'D-MMM-YY',
+      'DD-MMM-YY',
+    ];
     for (const fmt of formatsToTry) {
       const d = dayjs(dateString.trim(), fmt, 'en', true);
       if (d.isValid()) {
@@ -40,7 +54,7 @@ export class ExtractionService {
 
   private cleanData(data: any): any {
     if (typeof data === 'string') return data.trim();
-    if (Array.isArray(data)) return data.map(item => this.cleanData(item));
+    if (Array.isArray(data)) return data.map((item) => this.cleanData(item));
     if (typeof data === 'object' && data !== null) {
       for (const key in data) {
         if (key.toLowerCase().includes('date')) {
@@ -52,7 +66,10 @@ export class ExtractionService {
 
       const formatMiddleInitial = (fullNameObject) => {
         if (fullNameObject && fullNameObject.middle_initial) {
-          fullNameObject.middle_initial = fullNameObject.middle_initial.trim().charAt(0).toUpperCase();
+          fullNameObject.middle_initial = fullNameObject.middle_initial
+            .trim()
+            .charAt(0)
+            .toUpperCase();
         }
       };
 
@@ -78,78 +95,180 @@ export class ExtractionService {
     return data;
   }
 
-
   private sanitizeJsonString(str: string): string {
-    return str.replace(/\\n/g, "\\n").replace(/\\'/g, "\\'").replace(/\\"/g, '\\"').replace(/\\&/g, "\\&").replace(/\\r/g, "\\r").replace(/\\t/g, "\\t").replace(/\\b/g, "\\b").replace(/\\f/g, "\\f").replace(/[\u0000-\u001F]+/g, "");
+    return str
+      .replace(/\\n/g, '\\n')
+      .replace(/\\'/g, "\\'")
+      .replace(/\\"/g, '\\"')
+      .replace(/\\&/g, '\\&')
+      .replace(/\\r/g, '\\r')
+      .replace(/\\t/g, '\\t')
+      .replace(/\\b/g, '\\b')
+      .replace(/\\f/g, '\\f')
+      .replace(/[\u0000-\u001F]+/g, '');
   }
 
-  async extractDataFromPdf(file: Express.Multer.File, modelName: string, documentType: string): Promise<any> {
+  async extractDataFromPdf(
+    file: Express.Multer.File,
+    modelName: string,
+    documentType: string,
+  ): Promise<any> {
     const schema = {
-      "patient_info": {
-        "patient_record_number": null,
-        "full_name": { "first_name": null, "middle_initial": null, "last_name": null },
-        "date_of_birth": null,
-        "age": null,
-        "documented_age": null,
-        "sex": null,
-        "address": {
-          "house_no_street": null,
-          "barangay": null,
-          "city_municipality": null,
-          "province": null,
-          "zip_code": null
+      patient_info: {
+        patient_record_number: null,
+        full_name: { first_name: null, middle_initial: null, last_name: null },
+        date_of_birth: null,
+        age: null,
+        documented_age: null,
+        sex: null,
+        address: {
+          house_no_street: null,
+          barangay: null,
+          city_municipality: null,
+          province: null,
+          zip_code: null,
         },
-        "category": null,
-        "rank": null,
-        "afpsn": null,
-        "branch_of_service": null,
-        "unit_assignment": null
+        category: null,
+        rank: null,
+        afpsn: null,
+        branch_of_service: null,
+        unit_assignment: null,
       },
-      "sponsor_info": { "sponsor_name": { "rank": null, "first_name": null, "middle_initial": null, "last_name": null }, "sex": null, "afpsn": null, "branch_of_service": null, "unit_assignment": null },
-      "medical_encounters": { "consultations": [{ "consultation_date": null, "age_at_visit": null, "vitals": { "height_cm": null, "weight_kg": null, "temperature_c": null }, "chief_complaint": null, "diagnosis": null, "notes": null, "treatment_plan": null, "attending_physician": null }], "lab_results": [{ "test_type": null, "date_performed": null, "results": [{ "test_name": null, "value": null, "reference_range": null, "unit": null }], "medical_technologist": null, "pathologist": null }], "radiology_reports": [{ "examination": null, "date_performed": null, "findings": null, "impression": null, "radiologist": null }] },
-      "summary": {
-        "final_diagnosis": [],
-        "primary_complaint": null,
-        "key_findings": null,
-        "medications_taken": [],
-        "allergies": []
-      }
+      sponsor_info: {
+        sponsor_name: { rank: null, first_name: null, middle_initial: null, last_name: null },
+        sex: null,
+        afpsn: null,
+        branch_of_service: null,
+        unit_assignment: null,
+      },
+      medical_encounters: {
+        consultations: [
+          {
+            consultation_date: null,
+            age_at_visit: null,
+            vitals: { height_cm: null, weight_kg: null, temperature_c: null },
+            chief_complaint: { value: null, confidence_score: null },
+            diagnosis: { value: null, confidence_score: null },
+            notes: { value: null, confidence_score: null },
+            treatment_plan: { value: null, confidence_score: null },
+            attending_physician: null,
+          },
+        ],
+        lab_results: [
+          {
+            test_type: null,
+            date_performed: null,
+            results: [{ test_name: null, value: null, reference_range: null, unit: null }],
+            medical_technologist: null,
+            pathologist: null,
+          },
+        ],
+        radiology_reports: [
+          {
+            examination: null,
+            date_performed: null,
+            findings: { value: null, confidence_score: null },
+            impression: { value: null, confidence_score: null },
+            radiologist: null,
+          },
+        ],
+      },
+      summary: {
+        final_diagnosis: [],
+        primary_complaint: { value: null, confidence_score: null },
+        key_findings: { value: null, confidence_score: null },
+        medications_taken: [],
+        allergies: [],
+      },
     };
 
     const diagnosisList = [
       // Cardiovascular
-      "Hypertension", "Coronary Artery Disease", "Atrial Fibrillation", "Heart Failure", "Hyperlipidemia",
+      'Hypertension',
+      'Coronary Artery Disease',
+      'Atrial Fibrillation',
+      'Heart Failure',
+      'Hyperlipidemia',
       // Endocrine
-      "Type 2 Diabetes", "Type 1 Diabetes", "Hypothyroidism", "Hyperthyroidism", "Polycystic Ovary Syndrome (PCOS)",
+      'Type 2 Diabetes',
+      'Type 1 Diabetes',
+      'Hypothyroidism',
+      'Hyperthyroidism',
+      'Polycystic Ovary Syndrome (PCOS)',
       // Respiratory
-      "Asthma", "COPD (Chronic Obstructive Pulmonary Disease)", "Pneumonia", "Acute Bronchitis", "Allergic Rhinitis", "Sleep Apnea",
+      'Asthma',
+      'COPD (Chronic Obstructive Pulmonary Disease)',
+      'Pneumonia',
+      'Acute Bronchitis',
+      'Allergic Rhinitis',
+      'Sleep Apnea',
       // Gastrointestinal
-      "Gastroesophageal Reflux Disease (GERD)", "Gastroenteritis", "Irritable Bowel Syndrome (IBS)", "Peptic Ulcer Disease",
+      'Gastroesophageal Reflux Disease (GERD)',
+      'Gastroenteritis',
+      'Irritable Bowel Syndrome (IBS)',
+      'Peptic Ulcer Disease',
       // Neurological
-      "Migraine", "Tension Headache", "Epilepsy", "Cerebrovascular Accident (Stroke)", "Dementia",
+      'Migraine',
+      'Tension Headache',
+      'Epilepsy',
+      'Cerebrovascular Accident (Stroke)',
+      'Dementia',
       // Musculoskeletal
-      "Osteoarthritis", "Rheumatoid Arthritis", "Low Back Pain", "Fibromyalgia", "Gout",
+      'Osteoarthritis',
+      'Rheumatoid Arthritis',
+      'Low Back Pain',
+      'Fibromyalgia',
+      'Gout',
       // Genitourinary / Women's Health
-      "Urinary Tract Infection (UTI)", "Benign Prostatic Hyperplasia (BPH)", "Abnormal Uterine Bleeding (AUB-O)", "Endometriosis",
+      'Urinary Tract Infection (UTI)',
+      'Benign Prostatic Hyperplasia (BPH)',
+      'Abnormal Uterine Bleeding (AUB-O)',
+      'Endometriosis',
       // Mental Health
-      "Depression", "Anxiety Disorder", "Bipolar Disorder", "ADHD (Attention-Deficit/Hyperactivity Disorder)",
+      'Depression',
+      'Anxiety Disorder',
+      'Bipolar Disorder',
+      'ADHD (Attention-Deficit/Hyperactivity Disorder)',
       // Other Common Conditions
-      "Anemia", "Obesity", "Osteoporosis", "Chronic Kidney Disease", "Dermatitis"
+      'Anemia',
+      'Obesity',
+      'Osteoporosis',
+      'Chronic Kidney Disease',
+      'Dermatitis',
     ];
 
     const categoryList = [
-      "EDM", "EDS", "EDD", "EDF", "EDW", "ODW", "ODM", "ODF", "ODS", "ODD",
-      "ACTIVE MILITARY", "RMP", "CAA", "CHR", "CIVILIAN", "CDT", "CS", "P2LT",
-      "OCS", "RES", "ODH", "EDH"
+      'EDM',
+      'EDS',
+      'EDD',
+      'EDF',
+      'EDW',
+      'ODW',
+      'ODM',
+      'ODF',
+      'ODS',
+      'ODD',
+      'ACTIVE MILITARY',
+      'RMP',
+      'CAA',
+      'CHR',
+      'CIVILIAN',
+      'CDT',
+      'CS',
+      'P2LT',
+      'OCS',
+      'RES',
+      'ODH',
+      'EDH',
     ];
 
     let documentTypeInstruction = `5. **Documents with Sponsors**: If a sponsor is present in the document, ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'sponsor_info' object. The corresponding fields in 'patient_info' should be null. Only if the PATIENT is the service member should these fields be filled in 'patient_info'.`;
 
     if (documentType === 'military') {
-        documentTypeInstruction = `5. **This is a Military Personnel document**: ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'patient_info' object. The 'sponsor_info' object should be used for dependent information if present, but should not contain the primary military details.`;
+      documentTypeInstruction = `5. **This is a Military Personnel document**: ALL military information (rank, afpsn, branch_of_service, unit_assignment) MUST be placed in the 'patient_info' object. The 'sponsor_info' object should be used for dependent information if present, but should not contain the primary military details.`;
     } else if (documentType === 'dependent') {
-        // --- MODIFIED: STRONGER INSTRUCTION ---
-        documentTypeInstruction = `5. **CRITICAL INSTRUCTION: This is a Sponsored Dependent document.** The patient is NOT the military member. ALL military information (rank, afpsn, branch of service, unit assignment) found anywhere in this document MUST be placed in the 'sponsor_info' object. The corresponding military fields in the 'patient_info' object MUST be set to null. There are no exceptions to this rule.`;
+      // --- MODIFIED: STRONGER INSTRUCTION ---
+      documentTypeInstruction = `5. **CRITICAL INSTRUCTION: This is a Sponsored Dependent document.** The patient is NOT the military member. ALL military information (rank, afpsn, branch of service, unit assignment) found anywhere in this document MUST be placed in the 'sponsor_info' object. The corresponding military fields in the 'patient_info' object MUST be set to null. There are no exceptions to this rule.`;
     }
 
     const prompt = `
@@ -161,6 +280,7 @@ export class ExtractionService {
       3.  **Handle Document Layout**: Pay close attention to the document's layout. Often, the value for a field is written on the line ABOVE its corresponding label (e.g., the name "MEDINA" appears above the label "LAST NAME").
       4.  **No Extra Text**: Your final output must only be the raw JSON object.
       ${documentTypeInstruction}
+      5.  **Confidence Score**: For any field that is an object with "value" and "confidence_score", you MUST provide a confidence score from 0.0 (not confident) to 1.0 (very confident) based on how certain you are about the extracted/interpreted text.
       
       **FIELD-SPECIFIC INSTRUCTIONS:**
       - **documented_age**: Extract the patient's age exactly as it is written in the document. This is separate from any age you might calculate from the date of birth. If the document states an age, capture that specific number here.
@@ -189,18 +309,26 @@ export class ExtractionService {
       - **Proofread All Consultation Fields**: For all free-text fields within the "consultations" object (like 'chief_complaint', 'diagnosis', 'notes', and 'treatment_plan'), you must first extract the raw text, then proofread and rewrite it into a coherent, clinical narrative. Correct all spelling and grammar mistakes from the OCR process.
       - **Ensure Coherence**: Proofread the extracted data to be legible and coherent. All output must be in English. If a value is illegible, set it to null.
       
+      **TEXT FORMATTING INSTRUCTIONS:**
+      - For long-form text fields like 'notes', 'key_findings', 'findings', and 'impression', you MUST format the output. Combine fragmented sentences, create logical paragraphs separated by a newline character ('\\n'), and ensure proper sentence casing and punctuation. The goal is a clean, readable block of text, not just a direct transcription of the source.
+
       **JSON SCHEMA TO FOLLOW:**
       ${JSON.stringify(schema, null, 2)}
     `;
 
     const model = this.genAI.getGenerativeModel({
       model: modelName,
-      safetySettings: [{ category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE }]
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_NONE,
+        },
+      ],
     });
 
     const fileDataPart = {
       inlineData: {
-        data: file.buffer.toString("base64"),
+        data: file.buffer.toString('base64'),
         mimeType: file.mimetype,
       },
     };
@@ -219,10 +347,10 @@ export class ExtractionService {
     try {
       const parsedData = JSON.parse(sanitizedJson);
       const cleanedData = this.cleanData(parsedData);
-      
+
       cleanedData.extraction_info = {
         model_used: modelName,
-        processed_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
       };
 
       return cleanedData;
