@@ -1093,6 +1093,10 @@ document.addEventListener('DOMContentLoaded', () => {
       isEditMode = false;
     }
 
+    // Clear any bulk selections and hide the "Delete Selected" button
+    selectedPatientIds.clear();
+    updateBulkActionUI();
+
     renderPatientDetails();
     updateButtonState();
   }
